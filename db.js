@@ -101,6 +101,8 @@ function migrate() {
   if (!rc.includes('hidden_reason')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_reason TEXT DEFAULT ''`);
   if (!rc.includes('hidden_by')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_by INTEGER`);
   if (!rc.includes('hidden_at')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_at TEXT`);
+  if (!rc.includes('receipt_path')) db.exec(`ALTER TABLE reviews ADD COLUMN receipt_path TEXT`);
+  if (!rc.includes('verified_purchase')) db.exec(`ALTER TABLE reviews ADD COLUMN verified_purchase INTEGER DEFAULT 0`);
   const vc = cols('verifications');
   if (!vc.includes('admin_note')) db.exec(`ALTER TABLE verifications ADD COLUMN admin_note TEXT DEFAULT ''`);
   if (!vc.includes('expires_at')) db.exec(`ALTER TABLE verifications ADD COLUMN expires_at TEXT`);
@@ -397,6 +399,32 @@ function settingSet(key, value) {
 function listCategories() {
   return db.prepare('SELECT * FROM categories ORDER BY name').all();
 }
+function saveReceipt(reviewId, data, ext) {
+  const dir = path.join(DATA_DIR, 'uploads');
+  fs.mkdirSync(dir, { recursive: true });
+  const rel = 'receipt-' + reviewId + '.' + ext;
+  fs.writeFileSync(path.join(dir, rel), data);
+  db.prepare('UPDATE reviews SET receipt_path = ? WHERE id = ?').run('uploads/' + rel, reviewId);
+}
+function receiptFile(reviewId) {
+  const r = db.prepare('SELECT receipt_path FROM reviews WHERE id = ?').get(reviewId);
+  if (!r || !r.receipt_path) return null;
+  const p = path.join(DATA_DIR, r.receipt_path);
+  try { return { data: fs.readFileSync(p), mime: r.receipt_path.endsWith('.png') ? 'image/png' : r.receipt_path.endsWith('.webp') ? 'image/webp' : 'image/jpeg' }; }
+  catch { return null; }
+}
+function findBusinessDuplicates(name, city) {
+  const norm = x => String(x).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const tokens = norm(name).split(' ').filter(w => w.length > 2);
+  const rows = db.prepare(`SELECT id, name, slug, city FROM businesses WHERE status='active' LIMIT 500`).all();
+  return rows.map(b => {
+    const bt = norm(b.name).split(' ').filter(w => w.length > 2);
+    const shared = tokens.filter(w => bt.includes(w)).length;
+    const score = (tokens.length && bt.length) ? shared / Math.min(tokens.length, bt.length) : 0;
+    const bonus = (norm(city) && norm(city) === norm(b.city)) ? 0.2 : 0;
+    return { b, score: score + bonus };
+  }).filter(x => x.score >= 0.6).sort((a, b2) => b2.score - a.score).slice(0, 3).map(x => x.b);
+}
 function myAppealFor(reviewId) {
   return db.prepare(`SELECT * FROM appeals WHERE review_id = ? ORDER BY created_at DESC LIMIT 1`).get(reviewId);
 }
@@ -408,5 +436,5 @@ module.exports = {
   ownedBusinesses, platformStats,
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
   addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,
-  settingGet, settingSet, listCategories, myAppealFor,
+  settingGet, settingSet, listCategories, myAppealFor, saveReceipt, receiptFile, findBusinessDuplicates,
 };

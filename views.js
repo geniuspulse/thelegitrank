@@ -213,6 +213,7 @@ function reviewItem(r, isOwner) {
     <div class="review-head">
       <div class="avatar">${esc((r.author_name || 'A').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</div>
       <div class="who"><b>${esc(r.author_name)}</b><span>${new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
+      ${r.verified_purchase ? `<span class="vp-chip">✓ ${t('biz.vp')}</span>` : ''}
       <span class="stars-a push">${stars(r.rating)}</span>
     </div>
     ${r.title ? `<h4>${esc(r.title)}</h4>` : ''}
@@ -327,11 +328,13 @@ function reviewForm({ user, b, existing }) {
     <div class="wrap narrow">
       <h1 class="sec">${t('rev.title')}</h1>
       <p class="sec-sub muted">${t('rev.rules')}</p>
-      <form class="form" method="post" action="/business/${esc(b.slug)}/review">
+      <form class="form" method="post" action="/business/${esc(b.slug)}/review" enctype="multipart/form-data">
         <input type="hidden" name="rating" id="ratingVal" value="${r.rating}">
         <div class="f-row"><label>${t('rev.rating')}</label><div class="stars-input">${cur}</div></div>
         <div class="f-row"><label for="rt">${t('rev.name')}</label><input id="rt" name="title" maxlength="100" value="${esc(r.title)}" placeholder="${esc(tRaw('rev.namePh'))}"></div>
         <div class="f-row"><label for="rb">${t('rev.body')}</label><textarea id="rb" name="body" rows="5" maxlength="2000" required placeholder="${esc(tRaw('rev.bodyPh'))}">${esc(r.body)}</textarea></div>
+        <div class="f-row"><label for="rc">${t('rev.receipt')}</label><input id="rc" name="receipt" type="file" accept="image/png,image/jpeg,image/webp">
+        <p class="tiny muted">${t('rev.receiptHelp')}</p></div>
         <div class="f-actions"><button class="btn btn-green" type="submit">${t('rev.submit')} →</button>
         <a class="btn btn-ghost" href="/business/${esc(b.slug)}">${t('common.cancel')}</a></div>
       </form>
@@ -392,10 +395,17 @@ function signupPage({ err, values }) {
 }
 
 // ---------- ADD BUSINESS ----------
-function addBizPage({ user, err, values, added }) {
+function addBizPage({ user, err, values, added, dups }) {
   const v = values || {};
+  const dupBox = (err === 'dup' && (dups || []).length) ? `
+    <div class="dup-box">
+      <b>${t('add.dupTitle')}</b>
+      <ul>${dups.map(d => `<li><a href="/business/${esc(d.slug)}">${esc(d.name)}</a> — ${esc(d.city)}</li>`).join('')}</ul>
+      <label class="confirm-row"><input type="checkbox" name="confirm_dup"> ${t('add.dupConfirm')}</label>
+    </div>` : '';
   const errBox = err === 'exists' ? `<div class="form-err">${t('add.exists')}</div>` :
-                 err === 'invalid' ? `<div class="form-err">Please fill in all required fields.</div>` : '';
+                 err === 'invalid' ? `<div class="form-err">Please fill in all required fields.</div>` :
+                 err === 'dup' ? `<div class="form-err">${t('add.dupWarn')}</div>` : '';
   const catOpts = CATEGORIES.map(c => `<option ${v.category === c ? 'selected' : ''}>${c}</option>`).join('');
   const ctyOpts = COUNTRIES.map(c => `<option ${v.country === c ? 'selected' : ''}>${c}</option>`).join('');
   return layout({ title: 'Add a business — The Legit Rank', user, content: `
@@ -404,6 +414,7 @@ function addBizPage({ user, err, values, added }) {
     <p class="sec-sub muted">${t('add.sub')}</p>
     <form class="form" method="post" action="/businesses/new">
       ${errBox}
+      ${dupBox}
       <div class="f-row"><label for="bn">${t('add.name')}</label><input id="bn" name="name" required maxlength="100" value="${esc(v.name || added || '')}"></div>
       <div class="f-row"><label for="bc">${t('add.category')}</label><select id="bc" name="category">${catOpts}</select></div>
       <div class="f2">
@@ -682,6 +693,8 @@ function adminBusinessDetail({ user, b, reviews, others, msg }) {
       <td>${stars(r.rating)}<br><span class="small">${esc((r.title || '').slice(0, 60))}</span></td>
       <td>${r.hidden ? `<span class="nv-chip">hidden</span><br><span class="muted small">${esc(r.hidden_reason || '')}</span>` : '<span class="v-chip">published</span>'}</td>
       <td>
+        ${r.verified_purchase ? '<span class="v-chip">verified purchase</span>' : `<form method="post" action="/admin/review/${r.id}/purchase" class="inline"><button class="btn-mini">Mark verified purchase</button></form>`}
+        ${r.receipt_path ? `<a class="btn-mini" href="/admin/review/${r.id}/receipt" target="_blank">Receipt</a>` : ''}
         <form method="post" action="/admin/review/${r.id}/${r.hidden ? 'restore' : 'hide'}" class="inline">
           ${r.hidden ? '' : '<input name="reason" class="mini-input" placeholder="reason" required maxlength="200">'}
           <button class="btn-mini ${r.hidden ? 'btn-mini-g' : ''}">${r.hidden ? 'Restore' : 'Hide'}</button>

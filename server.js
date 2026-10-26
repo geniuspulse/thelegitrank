@@ -62,18 +62,50 @@ const ADM_ALLOWED = {
 };
 function admAllow(u, section) { return !!(u && ADM_ALLOWED[section] && ADM_ALLOWED[section].includes(u.role)); }
 
+function parseMultipart(buf, boundary) {
+  const out = {};
+  const delim = Buffer.from('--' + boundary);
+  let pos = buf.indexOf(delim);
+  while (pos !== -1) {
+    let start = pos + delim.length;
+    if (buf[start] === 0x2d && buf[start + 1] === 0x2d) break;
+    while (buf[start] === 0x0d || buf[start] === 0x0a) start++;
+    const headEnd = buf.indexOf('\r\n\r\n', start);
+    if (headEnd === -1) break;
+    const head = buf.slice(start, headEnd).toString('utf8');
+    let next = buf.indexOf(delim, headEnd + 4);
+    const bodyEnd = next === -1 ? buf.length : next - 2;
+    const body = buf.slice(headEnd + 4, bodyEnd);
+    const nm = head.match(/name="([^"]+)"/);
+    const fn = head.match(/filename="([^"]*)"/);
+    if (nm) {
+      if (fn && fn[1]) {
+        const cm = head.match(/content-type:\s*([^\r\n]+)/i);
+        out[nm[1]] = { __file: true, filename: fn[1].replace(/.*[\/\\]/, ''), mime: cm ? cm[1].trim().toLowerCase() : 'application/octet-stream', data: body };
+      } else out[nm[1]] = body.toString('utf8');
+    }
+    pos = next;
+  }
+  return out;
+}
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     req.on('data', c => {
       size += c.length;
-      if (size > 100 * 1024) { reject(new Error('too large')); req.destroy(); return; }
+      if (size > 3 * 1024 * 1024) { reject(new Error('too large')); req.destroy(); return; }
       chunks.push(c);
     });
     req.on('end', () => {
+      const buf = Buffer.concat(chunks);
+      const ctype = req.headers['content-type'] || '';
+      if (ctype.startsWith('multipart/form-data')) {
+        const bm = ctype.match(/boundary=(.+)$/);
+        if (bm) { try { resolve(parseMultipart(buf, bm[1].trim().replace(/^"|"$/g, ''))); return; } catch (e) { reject(e); return; } }
+      }
       const params = {};
-      new URLSearchParams(chunks.join('')).forEach((v, k) => { params[k] = v; });
+      new URLSearchParams(buf.toString('utf8')).forEach((v, k) => { params[k] = v; });
       resolve(params);
     });
     req.on('error', reject);
@@ -349,6 +381,15 @@ async function handle(req, res) {
       return html(res, 200, views.adminAudit({ user, entries, msg: q.get('msg') }));
     }
 
+    m = pathname.match(/^\/admin\/review\/(\d+)\/receipt$/);
+    if (m) {
+      if (!admAllow(user, 'moderation')) return send(res, 404, 'Not found');
+      const f = dbm.receiptFile(Number(m[1]));
+      if (!f) return send(res, 404, 'Not found');
+      res.writeHead(200, { 'Content-Type': f.mime, 'Cache-Control': 'no-store' });
+      return res.end(f.data);
+    }
+
     // ---------- PUBLIC: report form ----------
     if (pathname === '/report') {
       const type = ['scam', 'review', 'other'].includes(q.get('type')) ? q.get('type') : 'other';
@@ -462,13 +503,22 @@ async function handle(req, res) {
       const minLen = parseInt(dbm.settingGet('review_min_length', 20), 10) || 20;
       if (!rating || text.length < minLen) return redirect(res, `/business/${m[1]}/review`);
       const existing = dbm.myReview(b.id, user.id);
+      const saveRcpt = (id) => {
+        const f = body.receipt;
+        if (f && f.__file && f.data && f.data.length && /^image\/(png|jpe?g|webp)$/.test(f.mime) && f.data.length <= 2.5 * 1024 * 1024) {
+          const ext = f.mime === 'image/png' ? 'png' : f.mime === 'image/webp' ? 'webp' : 'jpg';
+          dbm.saveReceipt(id, f.data, ext);
+        }
+      };
       if (existing) {
         dbm.db.prepare('UPDATE reviews SET rating=?, title=?, body=? WHERE id = ?')
           .run(rating, title, text, existing.id);
+        saveRcpt(existing.id);
         return redirect(res, `/business/${m[1]}?msg=reviewUpdated`);
       }
-      dbm.db.prepare('INSERT INTO reviews (business_id, user_id, rating, title, body, created_at) VALUES (?,?,?,?,?,?)')
-        .run(b.id, user.id, rating, title, text, nowIso());
+      const rid = Number(dbm.db.prepare('INSERT INTO reviews (business_id, user_id, rating, title, body, created_at) VALUES (?,?,?,?,?,?)')
+        .run(b.id, user.id, rating, title, text, nowIso()).lastInsertRowid);
+      saveRcpt(rid);
       return redirect(res, `/business/${m[1]}?msg=reviewPosted`);
     }
 
@@ -514,6 +564,8 @@ async function handle(req, res) {
       const similar = dbm.db.prepare(
         `SELECT 1 FROM businesses WHERE LOWER(name) = ? AND status='active'`).get(name.toLowerCase());
       if (similar) return html(res, 409, views.addBizPage({ user, err: 'exists', values: body }));
+      const dups = body.confirm_dup === 'on' ? [] : dbm.findBusinessDuplicates(name, city);
+      if (dups.length) return html(res, 409, views.addBizPage({ user, err: 'dup', values: body, dups }));
       let websiteSafe = '';
       if (website && /^https?:\/\//i.test(website)) websiteSafe = website;
       const slug = dbm.uniqueSlug(name);
@@ -638,6 +690,20 @@ async function handle(req, res) {
           }
         }
         return redirect(res, '/admin/moderation?msg=Done');
+      }
+      // verified purchase toggle
+      m = pathname.match(/^\/admin\/review\/(\d+)\/purchase$/);
+      if (m) {
+        if (!admAllow(user, 'moderation')) return html(res, 404, views.notFound({ user }));
+        const rev = dbm.db.prepare('SELECT * FROM reviews WHERE id = ?').get(Number(m[1]));
+        if (rev) {
+          const nv = rev.verified_purchase ? 0 : 1;
+          dbm.db.prepare('UPDATE reviews SET verified_purchase=? WHERE id=?').run(nv, rev.id);
+          dbm.audit(user, nv ? 'review.marked_verified_purchase' : 'review.unmarked_verified_purchase', 'review', rev.id, '');
+        }
+        const ref = req.headers.referer || '';
+        const back = ref.includes('://') ? ref.slice(ref.indexOf('://') + 3).replace(/^[^/]+/, '') : '/admin/moderation';
+        return redirect(res, (back.startsWith('/admin') ? back.split('?')[0] + '?msg=Saved' : '/admin/moderation?msg=Saved'));
       }
       // dismiss a report
       m = pathname.match(/^\/admin\/report\/(\d+)\/dismiss$/);

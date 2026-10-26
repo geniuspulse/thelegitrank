@@ -3,12 +3,12 @@
 Daily build automation works top-down. Mark done with `[x]`.
 
 ## P0 — Trust & safety
-- [ ] 1. Email verification at signup (token links)
-- [ ] 2. Password reset via email link
-- [ ] 3. Phone (SMS/OTP) verification option
-- [ ] 4. "Verified purchase" badge — receipt/proof upload on reviews
+- [skip] 1. Email verification at signup (token links) — needs owner: choose an email/SMS provider (e.g. SMTP relay or Africa's Talking)
+- [skip] 2. Password reset via email link — needs owner: email provider decision
+- [skip] 3. Phone (SMS/OTP) verification option — needs owner: SMS provider (Africa's Talking / Twilio) and account
+- [x] 4. "Verified purchase" badge — receipt/proof upload on reviews
 - [ ] 5. Business verification tiers (docs, address, phone)
-- [ ] 6. Duplicate business detection before adding
+- [x] 6. Duplicate business detection before adding
 - [ ] 7. Review attachments (photos of product/delivery)
 - [ ] 8. Moderation queue with auto-flagging (spam, profanity)
 - [ ] 9. Rate limiting reviews per user per business

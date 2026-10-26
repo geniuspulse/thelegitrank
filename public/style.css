@@ -302,3 +302,9 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
 .bar-chart .bar span{width:100%;background:linear-gradient(180deg,var(--emerald),#00794e);border-radius:6px 6px 0 0;min-height:2px}
 .bar-chart .bar i{font-style:normal;font-size:.65rem;color:#64748b;position:absolute;bottom:-16px}
 .tiny{font-size:.75rem}
+
+/* duplicates + verified purchase */
+.dup-box{background:rgba(255,184,0,.08);border:1px solid rgba(255,184,0,.4);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.dup-box b{display:block;margin-bottom:6px}
+.dup-box ul{margin:6px 0 10px 18px}
+.vp-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(0,168,107,.12);color:#027a53;border:1px solid rgba(0,168,107,.3);font-size:.7rem;font-weight:700;border-radius:999px;padding:3px 10px;margin-left:8px}

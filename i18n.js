@@ -224,6 +224,12 @@ const DICT = {
   'rep.note': ['Reports are confidential. We never share your identity with the business.', 'Ripoti ndi ya chinsinsi. Sitimene dziro lanu ndi bizinesiyo.'],
   'rev.restricted': ['Your account is restricted. You cannot post reviews right now.', 'Akaunti yanu yawalamulidwa. Simungathe kulemba ndemanga papano.'],
   'rep.done': ['Thank you. Your report has been received and will be reviewed.', "Zikomo. Ripoti yanu yalandiridwa ndipo tiyang'anira."],
+  'rev.receipt': ['Receipt or proof of purchase (optional)', 'Chithandizo cha malipiriro (kwa okha)'],
+  'rev.receiptHelp': ['Attach a photo of your receipt or delivery confirmation. Only The Legit Rank staff can see it. It helps us mark your review as a verified purchase.', 'Ikani chithunzi cha resiti kapena chitsimikizo cha kutumiza. Anthu a The Legit Rank okha ndiwo amaona. Zimathandiza kutsimikizika kuti muli ndi ndemanga yenye.'],
+  'biz.vp': ['Verified purchase', 'Malipiridwe otsimikizika'],
+  'add.dupWarn': ['This business may already be listed.', 'Bizinesiyi mutha kuti ili kale mndandanda.'],
+  'add.dupTitle': ['Possible duplicates found', 'Zingapezeka kuti ndi zimodzimodzinso'],
+  'add.dupConfirm': ['None of these are the same business — list it anyway', 'Izi sizinthu zimodzinso — yikani pokha'],
 };
 
 function esc(s) {
