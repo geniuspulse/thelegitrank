@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Sitemap: https://pyokvdthsosquhtqlp6hzpuw.185.197.249.92.sslip.io/sitemap.xml

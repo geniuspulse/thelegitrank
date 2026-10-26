@@ -112,6 +112,16 @@ function readBody(req) {
   });
 }
 
+function imageExt(data, mime) {
+  if (!data || data.length < 12) return null;
+  if (data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e && data[3] === 0x47) return 'png';
+  if (data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) return 'jpg';
+  if (data.slice(0, 4).toString('ascii') === 'RIFF' && data.slice(8, 12).toString('ascii') === 'WEBP') return 'webp';
+  return null;
+}
+const isImageFile = (f, maxBytes) => f && f.__file && f.data && f.data.length > 0 &&
+  /^image\/(png|jpe?g|webp)$/.test(f.mime) && f.data.length <= maxBytes && !!imageExt(f.data, f.mime);
+
 // tiny rate limiter (per IP, per minute)
 const hits = new Map();
 setInterval(() => {
@@ -131,9 +141,9 @@ function send(res, code, body, headers = {}) {
   res.writeHead(code, {
     'Content-Type': 'text/html; charset=utf-8',
     'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
     'X-Frame-Options': 'DENY',
-    'Referrer-Policy': 'strict-origin-origin-when-cross-origin',
-    'Cache-Control': 'no-cache',
+    'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",    'Cache-Control': 'no-cache',
     ...headers,
   });
   res.end(body);
@@ -162,6 +172,9 @@ function serveStatic(req, res, file) {
       'Cache-Control': 'no-cache',
       'ETag': etag,
       'X-Content-Type-Options': 'nosniff',
+          'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'X-Frame-Options': 'DENY',
+    'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     });
     res.end(data);
   });
@@ -187,6 +200,7 @@ async function handle(req, res) {
   if (method === 'GET' || method === 'HEAD') {
     if (pathname === '/style.css') return serveStatic(req, res, 'style.css');
     if (pathname === '/app.js') return serveStatic(req, res, 'app.js');
+    if (pathname === '/robots.txt') return serveStatic(req, res, 'robots.txt');
     if (pathname === '/favicon.ico') return send(res, 204, '');
   }
 
@@ -282,10 +296,8 @@ async function handle(req, res) {
       dbm.db.prepare('UPDATE businesses SET name=?, category=?, city=?, country=?, description=?, website=?, phone=? WHERE id=?')
         .run(name, category, city, country, description, websiteSafe, phone, b.id);
       const lf = body.logo;
-      if (lf && lf.__file && lf.data && lf.data.length && /^image\/(png|jpe?g|webp)$/.test(lf.mime) && lf.data.length <= 1.5 * 1024 * 1024) {
-        const ext = lf.mime === 'image/png' ? 'png' : lf.mime === 'image/webp' ? 'webp' : 'jpg';
-        dbm.saveBizLogo(b.id, lf.data, ext);
-      }
+      const lext = isImageFile(lf, 1.5 * 1024 * 1024) && imageExt(lf.data, lf.mime);
+      if (lext) dbm.saveBizLogo(b.id, lf.data, lext);
       dbm.audit(user, 'business.profile_updated', 'business', b.id, name);
       return redirect(res, `/business/${m[1]}/manage?msg=nameUpdated`);
     }
@@ -431,6 +443,17 @@ async function handle(req, res) {
       return res.end(f.data);
     }
 
+    if (pathname === '/health') return send(res, 200, 'ok');
+
+    if (pathname === '/sitemap.xml') {
+      const biz = dbm.db.prepare(`SELECT slug FROM businesses WHERE status='active' ORDER BY id DESC LIMIT 5000`).all();
+      const urls = ['', '/search', '/businesses/new']
+        .concat(biz.map(b => '/business/' + b.slug))
+        .map(u => `<url><loc>https://pyokvdthsosquhtqlp6hzpuw.185.197.249.92.sslip.io${u}</loc></url>`).join('');
+      return send(res, 200, `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`,
+        { 'Content-Type': 'application/xml' });
+    }
+
     // ---------- PUBLIC: report form ----------
     if (pathname === '/report') {
       const type = ['scam', 'review', 'other'].includes(q.get('type')) ? q.get('type') : 'other';
@@ -547,16 +570,15 @@ async function handle(req, res) {
       const existing = dbm.myReview(b.id, user.id);
       const saveMedia = (id, field, saver) => {
         const f = body[field];
-        if (f && f.__file && f.data && f.data.length && /^image\/(png|jpe?g|webp)$/.test(f.mime) && f.data.length <= 2.5 * 1024 * 1024) {
-          const ext = f.mime === 'image/png' ? 'png' : f.mime === 'image/webp' ? 'webp' : 'jpg';
-          saver(id, f.data, ext);
-        }
+        const ext = isImageFile(f, 2.5 * 1024 * 1024) && imageExt(f.data, f.mime);
+        if (ext) saver(id, f.data, ext);
       };
       const saveRcpt = (id) => saveMedia(id, 'receipt', dbm.saveReceipt);
       if (existing) {
         dbm.db.prepare('UPDATE reviews SET rating=?, title=?, body=?, updated_at=? WHERE id = ?')
           .run(rating, title, text, nowIso(), existing.id);
         saveRcpt(existing.id);
+        saveMedia(existing.id, 'photo', dbm.savePhoto);
         return redirect(res, `/business/${m[1]}?msg=reviewUpdated`);
       }
       const rid = Number(dbm.db.prepare('INSERT INTO reviews (business_id, user_id, rating, title, body, created_at) VALUES (?,?,?,?,?,?)')
@@ -622,10 +644,8 @@ async function handle(req, res) {
         VALUES (?,?,?,?,?,?,?,?,?,?)`)
         .run(slug, name, category, city, country, description, websiteSafe, phone, user.id, nowIso()).lastInsertRowid);
       const lf = body.logo;
-      if (lf && lf.__file && lf.data && lf.data.length && /^image\/(png|jpe?g|webp)$/.test(lf.mime) && lf.data.length <= 1.5 * 1024 * 1024) {
-        const ext = lf.mime === 'image/png' ? 'png' : lf.mime === 'image/webp' ? 'webp' : 'jpg';
-        dbm.saveBizLogo(bid, lf.data, ext);
-      }
+      const lext = isImageFile(lf, 1.5 * 1024 * 1024) && imageExt(lf.data, lf.mime);
+      if (lext) dbm.saveBizLogo(bid, lf.data, lext);
       return redirect(res, `/business/${slug}?msg=bizAdded`);
     }
 
@@ -648,10 +668,8 @@ async function handle(req, res) {
       dbm.db.prepare('UPDATE businesses SET name=?, category=?, city=?, country=?, description=?, website=?, phone=? WHERE id=?')
         .run(name, category, city, country, description, websiteSafe, phone, b.id);
       const lf = body.logo;
-      if (lf && lf.__file && lf.data && lf.data.length && /^image\/(png|jpe?g|webp)$/.test(lf.mime) && lf.data.length <= 1.5 * 1024 * 1024) {
-        const ext = lf.mime === 'image/png' ? 'png' : lf.mime === 'image/webp' ? 'webp' : 'jpg';
-        dbm.saveBizLogo(b.id, lf.data, ext);
-      }
+      const lext = isImageFile(lf, 1.5 * 1024 * 1024) && imageExt(lf.data, lf.mime);
+      if (lext) dbm.saveBizLogo(b.id, lf.data, lext);
       dbm.audit(user, 'business.profile_updated', 'business', b.id, name);
       return redirect(res, `/business/${m[1]}/manage?msg=nameUpdated`);
     }
@@ -728,10 +746,8 @@ async function handle(req, res) {
                String(body.country || '').slice(0, 60), String(body.description || '').slice(0, 600),
                String(body.website || '').slice(0, 200), String(body.phone || '').slice(0, 40), Number(m[1]));
         const lf = body.logo;
-        if (lf && lf.__file && lf.data && lf.data.length && /^image\/(png|jpe?g|webp)$/.test(lf.mime) && lf.data.length <= 1.5 * 1024 * 1024) {
-          const ext = lf.mime === 'image/png' ? 'png' : lf.mime === 'image/webp' ? 'webp' : 'jpg';
-          dbm.saveBizLogo(Number(m[1]), lf.data, ext);
-        }
+        const lext = isImageFile(lf, 1.5 * 1024 * 1024) && imageExt(lf.data, lf.mime);
+        if (lext) dbm.saveBizLogo(Number(m[1]), lf.data, lext);
         dbm.audit(user, 'business.edited', 'business', Number(m[1]), name);
         return redirect(res, '/admin/business/' + m[1] + '?msg=Saved');
       }
