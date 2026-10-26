@@ -8,7 +8,7 @@
 html{scroll-behavior:smooth}
 body{font-family:'Inter',sans-serif;background:#fff;color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em}
-.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
 .wrap.narrow{max-width:560px}
 .center{text-align:center}
 .muted{color:var(--muted)}
@@ -210,7 +210,7 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
 .burger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
 .burger.open span:nth-child(2){opacity:0}
 .burger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
-.menu{display:none;position:sticky;top:57px;z-index:49;background:var(--navy-2);border-bottom:1px solid rgba(255,255,255,.1);padding:8px 20px 16px;box-shadow:0 24px 48px rgba(0,0,0,.45)}
+.menu{display:none;position:sticky;top:57px;z-index:49;background:var(--navy-2);border-bottom:1px solid rgba(255,255,255,.1);padding:8px 24px 16px;box-shadow:0 24px 48px rgba(0,0,0,.45)}
 .menu.open{display:block}
 .menu a,.menu button{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.08);color:#e2e8f0;font-family:'Inter',sans-serif;font-size:1rem;font-weight:600;text-decoration:none;padding:13px 4px;cursor:pointer}
 .menu a:last-of-type,.menu button{border-bottom:none}

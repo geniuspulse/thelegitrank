@@ -34,7 +34,6 @@ function layout({ title, content, user, hero = false }) {
   <nav aria-label="Main">
     <div class="wrap nav-inner">
       <a class="logo" href="/">
-        <span class="logo-badge"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z" fill="#00c07a"/><path d="M8.6 12.2l2.2 2.2 4.6-4.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         <span>The Legit Rank</span>
       </a>
       <div class="nav-links">
