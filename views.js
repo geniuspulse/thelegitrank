@@ -42,7 +42,6 @@ function layout({ title, content, user, hero = false }) {
         <a href="/businesses/new">${t('nav.add')}</a>
       </div>
       <div class="nav-cta">
-        <button class="lang" id="langBtn" type="button">Chichewa</button>
         ${user ? `<a class="nav-user" href="/dashboard" title="${esc(user.name)}">${esc(user.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</a>` : ''}
         <button class="burger" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
       </div>
