@@ -52,7 +52,7 @@ function tokenUid(token) {
 function currentUser(req) {
   const uid = tokenUid(parseCookies(req).lr_sess);
   if (!uid) return null;
-  return dbm.db.prepare('SELECT id, email, name, role FROM users WHERE id = ?').get(uid) || null;
+  return dbm.db.prepare('SELECT id, email, name, role, created_at FROM users WHERE id = ?').get(uid) || null;
 }
 
 function readBody(req) {
