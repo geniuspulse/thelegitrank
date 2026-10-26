@@ -59,3 +59,20 @@
     });
   });
 })();
+
+  // ---------- feedback quick stars ----------
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.fb-stars').forEach(function (wrap) {
+      var url = wrap.getAttribute('data-url') || '';
+      var stars = Array.prototype.slice.call(wrap.querySelectorAll('.fstar'));
+      function paint(v) {
+        stars.forEach(function (b, i) { b.classList.toggle('on', i < v); });
+      }
+      stars.forEach(function (btn, i) {
+        var v = i + 1;
+        btn.addEventListener('mouseenter', function () { paint(v); });
+        btn.addEventListener('mouseleave', function () { paint(0); });
+        btn.addEventListener('click', function () { window.location.href = url + '?rating=' + v; });
+      });
+    });
+  });

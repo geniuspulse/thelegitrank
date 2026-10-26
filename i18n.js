@@ -179,6 +179,15 @@ const DICT = {
   'adm.rejected': ['Rejected.', 'Kanidwa.'],
   'adm.owner': ['Owner', 'Mwini'],
   'adm.by': ['By', 'Ndani'],
+  'fb.title': ['Share your experience', 'Gawani zomwe mwazolowera'],
+  'fb.sub': ['Bought from this business? Your feedback helps other buyers shop safely.', 'Mwagula kambali? Ndemanga yanu zithandiza ogula ena kugula motetezeka.'],
+  'fb.recommend': ['of buyers recommend this business', 'a ogula amalimbikira bizinesiyi'],
+  'fb.noFeedback': ['No feedback yet. Be the first.', 'Palibe ndemanga. Khala woyamba.'],
+  'fb.tap': ['Tap a star to rate', 'Dinani nyenyezi kupima'],
+  'auth.loginSub': ['Log in to check businesses and post reviews.', 'Lowani kuti mufufuze mabizinesi ndi kutumiza ndemanga.'],
+  'auth.trust1': ['Real buyer reviews', 'Ndemanga za ogula enieni'],
+  'auth.trust2': ['Verified sellers', 'Ogulitsa otsimikizika'],
+  'auth.trust3': ['Free for buyers, always', 'Zaulere kwa ogula, kalakwalake'],
 };
 
 function esc(s) {

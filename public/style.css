@@ -6,7 +6,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{font-family:'Inter',sans-serif;background:#fff;color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:70px}
+body{font-family:'Inter',sans-serif;background:#fff;color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em}
 .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
 .wrap.narrow{max-width:560px}
@@ -217,3 +217,36 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
 .menu a:hover,.menu button:hover{color:var(--emerald-2)}
 .menu .menu-hl{color:var(--emerald-2);font-weight:700}
 @media(min-width:900px){.burger{display:none}.menu{display:none!important}}
+
+/* nav logo badge */
+.logo-badge{width:34px;height:34px;flex:0 0 auto;border-radius:11px;background:linear-gradient(135deg,rgba(0,192,122,.3),rgba(0,168,107,.1));border:1px solid rgba(0,192,122,.4);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 0 20px rgba(0,192,122,.25)}
+.nav-links a{padding:8px 14px;border-radius:999px}
+.nav-links a:hover{background:rgba(255,255,255,.09);color:#fff}
+
+/* auth pages */
+.auth-hero{background:radial-gradient(600px 380px at 15% 10%,rgba(0,168,107,.22),transparent 65%),radial-gradient(500px 320px at 90% 0%,rgba(255,184,0,.08),transparent 60%),linear-gradient(180deg,var(--navy),var(--navy-2));color:#fff;padding:52px 0 96px;text-align:center}
+.auth-hero .badge-lg{width:62px;height:62px;border-radius:18px;background:linear-gradient(135deg,var(--emerald),#00794e);display:inline-flex;align-items:center;justify-content:center;margin-bottom:18px;box-shadow:0 14px 34px rgba(0,168,107,.4)}
+.auth-hero h1{font-size:clamp(1.5rem,5vw,2.1rem);color:#fff}
+.auth-hero .sub{color:#94a3b8;margin-top:8px}
+.trust{list-style:none;display:flex;gap:8px 10px;flex-wrap:wrap;justify-content:center;margin-top:22px;padding:0}
+.trust li{font-size:.82rem;color:#7ee8b8;background:rgba(0,168,107,.12);border:1px solid rgba(0,192,122,.28);padding:6px 13px;border-radius:999px}
+.auth-body{background:#fff;padding:0 0 64px}
+.auth-card{position:relative;z-index:2;margin-top:-56px;box-shadow:0 24px 48px rgba(11,25,44,.16);border-radius:24px}
+.auth-alt{margin-top:18px}
+.f-ico{position:relative}
+.f-ico svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none}
+.f-ico input{padding-left:42px!important}
+
+/* feedback band on business page */
+.feedback-band{background:radial-gradient(700px 420px at 88% -20%,rgba(255,184,0,.10),transparent 60%),radial-gradient(600px 400px at -5% 130%,rgba(0,168,107,.28),transparent 62%),linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;padding:58px 0}
+.fb-grid{display:grid;gap:30px;align-items:center}
+.fb-prompt h3{font-size:clamp(1.25rem,3.4vw,1.7rem);color:#fff;margin-bottom:6px}
+.fb-prompt p{color:#94a3b8;margin-bottom:18px;max-width:460px}
+.fb-stars{display:flex;gap:8px;margin-bottom:22px}
+.fb-stars .fstar{background:none;border:none;font-size:2.4rem;line-height:1;color:#31425c;cursor:pointer;transition:color .15s,transform .15s;padding:0 2px}
+.fb-stars .fstar.on{color:var(--amber)}
+.fb-stars .fstar:hover{transform:scale(1.18)}
+.fb-stat{text-align:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:36px 22px}
+.fb-stat b{display:block;font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(2.4rem,7vw,3.4rem);font-weight:800;background:linear-gradient(92deg,#7ef0bd,var(--emerald-2));-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1.1}
+.fb-stat span{color:#94a3b8;font-size:.9rem}
+@media(min-width:860px){.fb-grid{grid-template-columns:1.5fr 1fr}}

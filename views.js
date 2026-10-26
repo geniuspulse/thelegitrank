@@ -34,7 +34,7 @@ function layout({ title, content, user, hero = false }) {
   <nav aria-label="Main">
     <div class="wrap nav-inner">
       <a class="logo" href="/">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z" fill="#00A86B"/><path d="M8.6 12.2l2.2 2.2 4.6-4.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="logo-badge"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z" fill="#00c07a"/><path d="M8.6 12.2l2.2 2.2 4.6-4.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         <span>The Legit Rank</span>
       </a>
       <div class="nav-links">
@@ -272,6 +272,28 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
     </div>
   </section>
 
+  <section class="feedback-band">
+    <div class="wrap fb-grid">
+      <div class="fb-prompt">
+        <h3>${t('fb.title')}</h3>
+        <p>${t('fb.sub')}</p>
+        <div class="fb-stars" data-url="/business/${esc(b.slug)}/review" role="group" aria-label="${esc(tRaw('fb.tap'))}">
+          <button class="fstar" type="button" aria-label="1 star">★</button>
+          <button class="fstar" type="button" aria-label="2 stars">★</button>
+          <button class="fstar" type="button" aria-label="3 stars">★</button>
+          <button class="fstar" type="button" aria-label="4 stars">★</button>
+          <button class="fstar" type="button" aria-label="5 stars">★</button>
+        </div>
+        <a class="btn btn-green" href="${user ? `/business/${esc(b.slug)}/review` : `/login?next=${encodeURIComponent('/business/' + b.slug + '/review')}`}">${t('biz.writeReview')} →</a>
+      </div>
+      <div class="fb-stat">
+        ${total
+          ? `<b>${Math.round((dist[4] + dist[5]) / total * 100)}%</b><span>${t('fb.recommend')}</span>`
+          : `<b>–</b><span>${t('fb.noFeedback')}</span>`}
+      </div>
+    </div>
+  </section>
+
   ${flash(msg || '')}
   <section class="pad-sm">
     <div class="wrap biz-cols">
@@ -318,35 +340,53 @@ function reviewForm({ user, b, existing }) {
 // ---------- AUTH ----------
 function loginPage({ next, err }) {
   return layout({ title: 'Log in — The Legit Rank', user: null, content: `
-  <section class="page-head"><div class="wrap narrow">
-    <h1 class="sec">${t('auth.loginTitle')}</h1>
-    <form class="form" method="post" action="/login">
-      <input type="hidden" name="next" value="${esc(next || '')}">
-      ${err ? `<div class="form-err">${t('auth.badlogin')}</div>` : ''}
-      <div class="f-row"><label for="em">${t('auth.email')}</label><input id="em" name="email" type="email" required autocomplete="email"></div>
-      <div class="f-row"><label for="pw">${t('auth.password')}</label><input id="pw" name="password" type="password" required autocomplete="current-password"></div>
-      <button class="btn btn-green w100" type="submit">${t('auth.enter')} →</button>
-    </form>
-    <p class="center muted small"><a href="/signup">${t('auth.noAccount')}</a></p>
-  </div></section>` });
+  <section class="auth-hero">
+    <div class="wrap narrow">
+      <span class="badge-lg"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z" fill="#00c07a"/><path d="M8.6 12.2l2.2 2.2 4.6-4.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <h1>${t('auth.loginTitle')}</h1>
+      <p class="sub">${t('auth.loginSub')}</p>
+      <ul class="trust"><li>✓ ${t('auth.trust1')}</li><li>✓ ${t('auth.trust2')}</li><li>✓ ${t('auth.trust3')}</li></ul>
+    </div>
+  </section>
+  <section class="auth-body">
+    <div class="wrap narrow">
+      <form class="form auth-card" method="post" action="/login">
+        <input type="hidden" name="next" value="${esc(next || '')}">
+        ${err ? `<div class="form-err">${t('auth.badlogin')}</div>` : ''}
+        <div class="f-row"><label for="em">${t('auth.email')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m3 6 9 7 9-7"/></svg><input id="em" name="email" type="email" required autocomplete="email" placeholder="you@example.com"></div></div>
+        <div class="f-row"><label for="pw">${t('auth.password')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="pw" name="password" type="password" required autocomplete="current-password" placeholder="••••••••"></div></div>
+        <button class="btn btn-green w100" type="submit">${t('auth.enter')} →</button>
+      </form>
+      <p class="center muted small auth-alt"><a href="/signup">${t('auth.noAccount')}</a></p>
+    </div>
+  </section>` });
 }
 
 function signupPage({ err, values }) {
   const v = values || {};
-  const errBox = err === 'taken' ? `<div class="form-err">${t('auth.emailTaken')}</div>` : '';
+  const errBox = err === 'taken' ? `<div class="form-err">${t('auth.emailTaken')}</div>` :
+                 err ? '<div class="form-err">Please fill in all fields. Password must be at least 8 characters.</div>' : '';
   return layout({ title: 'Sign up — The Legit Rank', user: null, content: `
-  <section class="page-head"><div class="wrap narrow">
-    <h1 class="sec">${t('auth.signupTitle')}</h1>
-    <p class="sec-sub muted">${t('auth.signupSub')}</p>
-    <form class="form" method="post" action="/signup">
-      ${errBox}
-      <div class="f-row"><label for="nm">${t('auth.name')}</label><input id="nm" name="name" required maxlength="80" value="${esc(v.name || '')}"></div>
-      <div class="f-row"><label for="em">${t('auth.email')}</label><input id="em" name="email" type="email" required maxlength="120" value="${esc(v.email || '')}"></div>
-      <div class="f-row"><label for="pw">${t('auth.password')}</label><input id="pw" name="password" type="password" required minlength="8" autocomplete="new-password"></div>
-      <button class="btn btn-green w100" type="submit">${t('auth.create')} →</button>
-    </form>
-    <p class="center muted small"><a href="/login">${t('auth.haveAccount')}</a></p>
-  </div></section>` });
+  <section class="auth-hero">
+    <div class="wrap narrow">
+      <span class="badge-lg"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z" fill="#00c07a"/><path d="M8.6 12.2l2.2 2.2 4.6-4.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <h1>${t('auth.signupTitle')}</h1>
+      <p class="sub">${t('auth.signupSub')}</p>
+      <ul class="trust"><li>✓ ${t('auth.trust1')}</li><li>✓ ${t('auth.trust2')}</li><li>✓ ${t('auth.trust3')}</li></ul>
+    </div>
+  </section>
+  <section class="auth-body">
+    <div class="wrap narrow">
+      <form class="form auth-card" method="post" action="/signup">
+        ${errBox}
+        <div class="f-row"><label for="nm">${t('auth.name')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg><input id="nm" name="name" required maxlength="80" value="${esc(v.name || '')}" placeholder="Your full name"></div></div>
+        <div class="f-row"><label for="em">${t('auth.email')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m3 6 9 7 9-7"/></svg><input id="em" name="email" type="email" required maxlength="120" value="${esc(v.email || '')}" placeholder="you@example.com"></div></div>
+        <div class="f-row"><label for="pw">${t('auth.password')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="pw" name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></div></div>
+        <button class="btn btn-green w100" type="submit">${t('auth.create')} →</button>
+      </form>
+      <p class="center muted small auth-alt"><a href="/login">${t('auth.haveAccount')}</a></p>
+    </div>
+  </section>` });
 }
 
 // ---------- ADD BUSINESS ----------

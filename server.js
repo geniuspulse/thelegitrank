@@ -187,7 +187,11 @@ async function handle(req, res) {
       if (!b) return html(res, 404, views.notFound({ user }));
       if (!user) return redirect(res, `/login?next=/business/${m[1]}/review`);
       const existing = dbm.myReview(b.id, user.id);
-      return html(res, 200, views.reviewForm({ user, b, existing }));
+      const qRating = Math.min(5, Math.max(1, parseInt(q.get('rating'), 10) || 0));
+      return html(res, 200, views.reviewForm({
+        user, b,
+        existing: existing || (qRating ? { rating: qRating, title: '', body: '' } : null),
+      }));
     }
 
     m = pathname.match(/^\/business\/([a-z0-9-]+)\/verify$/);
