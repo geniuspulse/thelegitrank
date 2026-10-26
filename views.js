@@ -91,7 +91,7 @@ ${content}
 
 function flash(msg) {
   if (!msg) return '';
-  const m = { error: 'fl-err', ok: 'fl-ok' }[msg];
+  const m = { error: 'fl-err', nameMissing: 'fl-err', passWrong: 'fl-err', ok: 'fl-ok' }[msg];
   if (!m) return '';
   const text = {
     reviewPosted: tRaw('rev.posted'), reviewUpdated: tRaw('rev.updated'),
@@ -99,6 +99,8 @@ function flash(msg) {
     bizAdded: tRaw('add.added'), claimSent: tRaw('claim.sent'),
     verSent: tRaw('ver.sent'), respPosted: tRaw('resp.posted'),
     approved: tRaw('adm.approved'), rejected: tRaw('adm.rejected'),
+    nameUpdated: tRaw('dash.nameUpdated'), nameMissing: tRaw('dash.nameMissing'),
+    passUpdated: tRaw('dash.passUpdated'), passWrong: tRaw('dash.passWrong'),
   }[msg];
   if (!text) return '';
   return `<div class="wrap"><div class="flash ${m}">${esc(text)}</div></div>`;
@@ -436,6 +438,10 @@ function claimPage({ user, b, err }) {
 
 // ---------- DASHBOARD ----------
 function dashboard({ user, reviews, owned, pendingV, msg }) {
+  const initials = esc((user.name || 'A').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
+  const since = new Date(user.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  const verifiedCount = owned.filter(b => b.verified).length;
+
   const bizRows = owned.map(b => {
     const pv = pendingV[b.id];
     return `
@@ -450,29 +456,56 @@ function dashboard({ user, reviews, owned, pendingV, msg }) {
       </div>
       <div class="row-actions">
         ${!b.verified && !pv ? `<a class="btn-mini btn-mini-g" href="/business/${esc(b.slug)}/verify">${t('dash.applyVerify')}</a>` : ''}
-        <a class="btn-mini" href="/business/${esc(b.slug)}">${t('dash.manage')}</a>
+        <a class="btn-mini" href="/business/${esc(b.slug)}/manage">${t('dash.manage')}</a>
       </div>
     </div>`;
   }).join('');
 
   const revRows = reviews.map(r => `
-    <div class="card row-card">
-      <div>
+    <div class="card row-card col">
+      <div class="rev-me-top">
         <b><a href="/business/${esc(r.biz_slug)}">${esc(r.biz_name)}</a></b>
         <span class="stars-a">${stars(r.rating)}</span>
-        <p class="small muted">${esc((r.title || r.body).slice(0, 90))}</p>
+        <span class="muted small">${new Date(r.created_at).toLocaleDateString('en-GB')}</span>
       </div>
+      ${r.title ? `<h4 class="rev-me-title">${esc(r.title)}</h4>` : ''}
+      <p class="small muted">${esc((r.body || '').slice(0, 140))}</p>
+      <a class="btn-mini self-start" href="/business/${esc(r.biz_slug)}/review">${t('dash.edit')} →</a>
     </div>`).join('');
 
   return layout({ title: 'My account — The Legit Rank', user, content: `
-  <section class="page-head"><div class="wrap">
-    <h1 class="sec">${t('dash.title')}</h1>
-    <p class="sec-sub muted">${esc(user.name)} · ${esc(user.email)}</p>
+  <section class="dash-hero">
+    <div class="wrap dash-top">
+      <div class="dash-av">${initials}</div>
+      <div>
+        <h1>${esc(user.name)}</h1>
+        <p class="sub">${esc(user.email)} · ${t('dash.memberSince')} ${since}</p>
+      </div>
+    </div>
+    <div class="wrap dash-stats">
+      <div class="chip-stat"><b>${reviews.length}</b><span>${t('dash.statReviews')}</span></div>
+      <div class="chip-stat"><b>${owned.length}</b><span>${t('dash.statBiz')}</span></div>
+      <div class="chip-stat"><b>${verifiedCount}</b><span>${t('dash.statVerified')}</span></div>
+    </div>
+  </section>
+  <section class="pad"><div class="wrap">
     ${flash(msg || '')}
-    <h2 class="dash-h">${t('dash.myBusinesses')}</h2>
-    ${owned.length ? bizRows : `<div class="empty"><p class="muted">${t('dash.noBusinesses')}</p></div>`}
     <h2 class="dash-h">${t('dash.myReviews')}</h2>
-    ${reviews.length ? revRows : `<div class="empty"><p class="muted">${t('dash.noReviews')}</p></div>`}
+    ${reviews.length ? revRows : `<div class="empty"><p class="muted">${t('dash.noReviews')}</p><a class="btn-mini btn-mini-g" href="/search">${t('nav.browse')} →</a></div>`}
+    <h2 class="dash-h">${t('dash.myBusinesses')}</h2>
+    ${owned.length ? bizRows : `<div class="empty"><p class="muted">${t('dash.noBusinesses')}</p><a class="btn-mini btn-mini-g" href="/businesses/new">${t('dash.addBiz')} →</a></div>`}
+    <h2 class="dash-h">${t('dash.settings')}</h2>
+    <div class="settings-grid">
+      <form method="post" action="/settings/profile" class="card form form-compact">
+        <div class="f-row"><label for="dn">${t('dash.displayName')}</label><input id="dn" name="name" required maxlength="80" value="${esc(user.name)}"></div>
+        <button class="btn btn-green" type="submit">${t('dash.save')}</button>
+      </form>
+      <form method="post" action="/settings/password" class="card form form-compact">
+        <div class="f-row"><label for="cp">${t('dash.currentPass')}</label><input id="cp" name="current" type="password" required autocomplete="current-password"></div>
+        <div class="f-row"><label for="np">${t('dash.newPass')}</label><input id="np" name="next" type="password" required minlength="8" autocomplete="new-password"></div>
+        <button class="btn btn-green" type="submit">${t('dash.updatePass')}</button>
+      </form>
+    </div>
   </div></section>` });
 }
 

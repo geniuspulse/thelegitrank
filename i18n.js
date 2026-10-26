@@ -188,6 +188,23 @@ const DICT = {
   'auth.trust1': ['Real buyer reviews', 'Ndemanga za ogula enieni'],
   'auth.trust2': ['Verified sellers', 'Ogulitsa otsimikizika'],
   'auth.trust3': ['Free for buyers, always', 'Zaulere kwa ogula, kalakwalake'],
+  'dash.memberSince': ['Member since', 'Wachimidzi kuyambira'],
+  'dash.settings': ['Account settings', 'Zokonza akaunti'],
+  'dash.displayName': ['Your name', 'Dzina lanu'],
+  'dash.save': ['Save', 'Sunga'],
+  'dash.changePass': ['Change password', 'Sinthani phasiwedi'],
+  'dash.currentPass': ['Current password', 'Phasiwedi lili pano'],
+  'dash.newPass': ['New password', 'Phasiwedi latsopano'],
+  'dash.updatePass': ['Update password', 'Sinthani phasiwedi'],
+  'dash.statReviews': ['Reviews', 'Ndemanga'],
+  'dash.statBiz': ['Businesses', 'Mabizinesi'],
+  'dash.statVerified': ['Verified', 'Otsimikizika'],
+  'dash.edit': ['Edit', 'Lembani'],
+  'dash.addBiz': ['Add your business', 'Wonjezani bizinesi yanu'],
+  'dash.nameUpdated': ['Name updated.', 'Dzina lasinthidwa.'],
+  'dash.nameMissing': ['Please enter a name.', 'Lowetsani dzina.'],
+  'dash.passUpdated': ['Password updated.', 'Phasiwedi lasinthidwa.'],
+  'dash.passWrong': ['Current password is incorrect.', 'Phasiwedi wapano siwonyo.'],
 };
 
 function esc(s) {

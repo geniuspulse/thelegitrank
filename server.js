@@ -320,6 +320,21 @@ async function handle(req, res) {
 
     if (!user) return redirect(res, '/login');
 
+    if (pathname === '/settings/profile') {
+      const name = String(body.name || '').trim().slice(0, 80);
+      if (!name) return redirect(res, '/dashboard?msg=nameMissing');
+      dbm.db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, user.id);
+      return redirect(res, '/dashboard?msg=nameUpdated');
+    }
+    if (pathname === '/settings/password') {
+      const row = dbm.db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+      const current = String(body.current || '');
+      const nextPw = String(body.next || '');
+      if (!dbm.verifyPassword(current, row.password_hash) || nextPw.length < 8) return redirect(res, '/dashboard?msg=passWrong');
+      dbm.db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(dbm.hashPassword(nextPw), user.id);
+      return redirect(res, '/dashboard?msg=passUpdated');
+    }
+
     let m = pathname.match(/^\/business\/([a-z0-9-]+)\/review$/);
     if (m) {
       const b = dbm.getBusinessBySlug(m[1]);
