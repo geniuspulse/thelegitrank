@@ -263,6 +263,33 @@ async function handle(req, res) {
       return html(res, 200, views.addBizPage({ user, values: { name: q.get('name') || '' } }));
     }
 
+    m = pathname.match(/^\/business\/([a-z0-9-]+)\/profile$/);
+    if (m) {
+      const b = dbm.getBusinessBySlug(m[1]);
+      if (!b) return html(res, 404, views.notFound({ user }));
+      if (!user) return redirect(res, `/login?next=/business/${m[1]}/manage`);
+      if (b.owner_user_id !== user.id && user.role !== 'admin') return redirect(res, `/business/${m[1]}`);
+      const name = String(body.name || '').trim().slice(0, 120);
+      const category = CATEGORIES.includes(body.category) ? body.category : b.category;
+      const city = String(body.city || '').trim().slice(0, 80) || b.city;
+      const country = COUNTRIES.includes(body.country) ? body.country : b.country;
+      const description = String(body.description || '').trim().slice(0, 600);
+      let websiteSafe = b.website || '';
+      const w = String(body.website || '').trim().slice(0, 200);
+      if (w) websiteSafe = /^https?:\/\//i.test(w) ? w : websiteSafe;
+      const phone = String(body.phone || '').trim().slice(0, 40);
+      if (!name) return redirect(res, `/business/${m[1]}/manage?msg=nameMissing`);
+      dbm.db.prepare('UPDATE businesses SET name=?, category=?, city=?, country=?, description=?, website=?, phone=? WHERE id=?')
+        .run(name, category, city, country, description, websiteSafe, phone, b.id);
+      const lf = body.logo;
+      if (lf && lf.__file && lf.data && lf.data.length && /^image\/(png|jpe?g|webp)$/.test(lf.mime) && lf.data.length <= 1.5 * 1024 * 1024) {
+        const ext = lf.mime === 'image/png' ? 'png' : lf.mime === 'image/webp' ? 'webp' : 'jpg';
+        dbm.saveBizLogo(b.id, lf.data, ext);
+      }
+      dbm.audit(user, 'business.profile_updated', 'business', b.id, name);
+      return redirect(res, `/business/${m[1]}/manage?msg=nameUpdated`);
+    }
+
     m = pathname.match(/^\/claim\/([a-z0-9-]+)$/);
     if (m) {
       const b = dbm.getBusinessBySlug(m[1]);
@@ -381,6 +408,13 @@ async function handle(req, res) {
       return html(res, 200, views.adminAudit({ user, entries, msg: q.get('msg') }));
     }
 
+    m = pathname.match(/^\/logo\/(\d+)$/);
+    if (m) {
+      const f = dbm.bizLogoFile(Number(m[1]));
+      if (!f) return send(res, 404, 'Not found');
+      res.writeHead(200, { 'Content-Type': f.mime, 'Cache-Control': 'public, max-age=86400' });
+      return res.end(f.data);
+    }
     m = pathname.match(/^\/photo\/(\d+)$/);
     if (m) {
       const f = dbm.photoFile(Number(m[1]));
@@ -584,10 +618,42 @@ async function handle(req, res) {
       let websiteSafe = '';
       if (website && /^https?:\/\//i.test(website)) websiteSafe = website;
       const slug = dbm.uniqueSlug(name);
-      dbm.db.prepare(`INSERT INTO businesses (slug, name, category, city, country, description, website, phone, created_by, created_at)
+      const bid = Number(dbm.db.prepare(`INSERT INTO businesses (slug, name, category, city, country, description, website, phone, created_by, created_at)
         VALUES (?,?,?,?,?,?,?,?,?,?)`)
-        .run(slug, name, category, city, country, description, websiteSafe, phone, user.id, nowIso());
+        .run(slug, name, category, city, country, description, websiteSafe, phone, user.id, nowIso()).lastInsertRowid);
+      const lf = body.logo;
+      if (lf && lf.__file && lf.data && lf.data.length && /^image\/(png|jpe?g|webp)$/.test(lf.mime) && lf.data.length <= 1.5 * 1024 * 1024) {
+        const ext = lf.mime === 'image/png' ? 'png' : lf.mime === 'image/webp' ? 'webp' : 'jpg';
+        dbm.saveBizLogo(bid, lf.data, ext);
+      }
       return redirect(res, `/business/${slug}?msg=bizAdded`);
+    }
+
+    m = pathname.match(/^\/business\/([a-z0-9-]+)\/profile$/);
+    if (m) {
+      const b = dbm.getBusinessBySlug(m[1]);
+      if (!b) return html(res, 404, views.notFound({ user }));
+      if (!user) return redirect(res, `/login?next=/business/${m[1]}/manage`);
+      if (b.owner_user_id !== user.id && user.role !== 'admin') return redirect(res, `/business/${m[1]}`);
+      const name = String(body.name || '').trim().slice(0, 120);
+      const category = CATEGORIES.includes(body.category) ? body.category : b.category;
+      const city = String(body.city || '').trim().slice(0, 80) || b.city;
+      const country = COUNTRIES.includes(body.country) ? body.country : b.country;
+      const description = String(body.description || '').trim().slice(0, 600);
+      let websiteSafe = b.website || '';
+      const w = String(body.website || '').trim().slice(0, 200);
+      if (w) websiteSafe = /^https?:\/\//i.test(w) ? w : websiteSafe;
+      const phone = String(body.phone || '').trim().slice(0, 40);
+      if (!name) return redirect(res, `/business/${m[1]}/manage?msg=nameMissing`);
+      dbm.db.prepare('UPDATE businesses SET name=?, category=?, city=?, country=?, description=?, website=?, phone=? WHERE id=?')
+        .run(name, category, city, country, description, websiteSafe, phone, b.id);
+      const lf = body.logo;
+      if (lf && lf.__file && lf.data && lf.data.length && /^image\/(png|jpe?g|webp)$/.test(lf.mime) && lf.data.length <= 1.5 * 1024 * 1024) {
+        const ext = lf.mime === 'image/png' ? 'png' : lf.mime === 'image/webp' ? 'webp' : 'jpg';
+        dbm.saveBizLogo(b.id, lf.data, ext);
+      }
+      dbm.audit(user, 'business.profile_updated', 'business', b.id, name);
+      return redirect(res, `/business/${m[1]}/manage?msg=nameUpdated`);
     }
 
     m = pathname.match(/^\/claim\/([a-z0-9-]+)$/);
@@ -661,6 +727,11 @@ async function handle(req, res) {
           .run(name, String(body.category || '').slice(0, 60), String(body.city || '').slice(0, 80),
                String(body.country || '').slice(0, 60), String(body.description || '').slice(0, 600),
                String(body.website || '').slice(0, 200), String(body.phone || '').slice(0, 40), Number(m[1]));
+        const lf = body.logo;
+        if (lf && lf.__file && lf.data && lf.data.length && /^image\/(png|jpe?g|webp)$/.test(lf.mime) && lf.data.length <= 1.5 * 1024 * 1024) {
+          const ext = lf.mime === 'image/png' ? 'png' : lf.mime === 'image/webp' ? 'webp' : 'jpg';
+          dbm.saveBizLogo(Number(m[1]), lf.data, ext);
+        }
         dbm.audit(user, 'business.edited', 'business', Number(m[1]), name);
         return redirect(res, '/admin/business/' + m[1] + '?msg=Saved');
       }

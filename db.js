@@ -101,6 +101,8 @@ function migrate() {
   if (!rc.includes('hidden_reason')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_reason TEXT DEFAULT ''`);
   if (!rc.includes('hidden_by')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_by INTEGER`);
   if (!rc.includes('hidden_at')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_at TEXT`);
+  const bc = cols('businesses');
+  if (!bc.includes('logo_path')) db.exec(`ALTER TABLE businesses ADD COLUMN logo_path TEXT`);
   if (!rc.includes('updated_at')) db.exec(`ALTER TABLE reviews ADD COLUMN updated_at TEXT`);
   if (!rc.includes('photo_path')) db.exec(`ALTER TABLE reviews ADD COLUMN photo_path TEXT`);
   if (!rc.includes('receipt_path')) db.exec(`ALTER TABLE reviews ADD COLUMN receipt_path TEXT`);
@@ -173,7 +175,7 @@ function uniqueSlug(name) {
 // ---- queries ----
 const BIZ_AGG = `
   b.id, b.slug, b.name, b.category, b.city, b.country, b.description, b.website, b.phone,
-  b.verified, b.verified_at, b.owner_user_id, b.status, b.created_at,
+  b.verified, b.verified_at, b.owner_user_id, b.status, b.created_at, b.logo_path,
   (SELECT ROUND(AVG(r.rating),1) FROM reviews r WHERE r.business_id = b.id AND r.hidden = 0) AS avg_rating,
   (SELECT COUNT(*) FROM reviews r WHERE r.business_id = b.id AND r.hidden = 0) AS review_count`;
 
@@ -415,6 +417,21 @@ function receiptFile(reviewId) {
   try { return { data: fs.readFileSync(p), mime: r.receipt_path.endsWith('.png') ? 'image/png' : r.receipt_path.endsWith('.webp') ? 'image/webp' : 'image/jpeg' }; }
   catch { return null; }
 }
+function saveBizLogo(bizId, data, ext) {
+  const dir = path.join(DATA_DIR, 'uploads');
+  fs.mkdirSync(dir, { recursive: true });
+  const old = db.prepare('SELECT logo_path FROM businesses WHERE id = ?').get(bizId);
+  if (old && old.logo_path) { try { fs.unlinkSync(path.join(DATA_DIR, old.logo_path)); } catch {} }
+  const rel = 'bizlogo-' + bizId + '.' + ext;
+  fs.writeFileSync(path.join(dir, rel), data);
+  db.prepare('UPDATE businesses SET logo_path = ? WHERE id = ?').run('uploads/' + rel, bizId);
+}
+function bizLogoFile(bizId) {
+  const r = db.prepare('SELECT logo_path FROM businesses WHERE id = ?').get(bizId);
+  if (!r || !r.logo_path) return null;
+  try { return { data: fs.readFileSync(path.join(DATA_DIR, r.logo_path)), mime: r.logo_path.endsWith('.png') ? 'image/png' : r.logo_path.endsWith('.webp') ? 'image/webp' : 'image/jpeg' }; }
+  catch { return null; }
+}
 function savePhoto(reviewId, data, ext) {
   const dir = path.join(DATA_DIR, 'uploads');
   fs.mkdirSync(dir, { recursive: true });
@@ -475,5 +492,5 @@ module.exports = {
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
   addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,
   settingGet, settingSet, listCategories, myAppealFor, saveReceipt, receiptFile, findBusinessDuplicates,
-  savePhoto, photoFile, autoFlagReasons,
+  savePhoto, photoFile, autoFlagReasons, saveBizLogo, bizLogoFile,
 };

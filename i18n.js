@@ -234,6 +234,11 @@ const DICT = {
   'rev.photoHelp': ['Shown publicly with your review. A photo of what you received helps other buyers.', 'Imaonekera pamodzi ndi ndemanga yanu. Chithunzi cha zimene munalandira chimathandiza ogula ena.'],
   'rev.rate': ['You are posting reviews too quickly. Please wait a moment.', "Mukulemba ndemanga msanga mnaderero. Chonde dikirani pang'oko."],
   'biz.updated': ['updated', 'yasinthidwa'],
+  'add.logo': ['Business logo or photo', 'Chithunzi cha bizinesi'],
+  'add.logoHelp': ['Square image works best (PNG, JPG or WebP, max 1.5MB).', 'Chithunzi cha mkono mmodzi chimayenda bwino (PNG, JPG kapena WebP, mpaka 1.5MB).'],
+  'mg.logo': ['Update business logo or photo', 'Sintheni chithunzi cha bizinesi'],
+  'mg.current': ['Current', 'Lilipo tsopano'],
+  'mg.save': ['Save profile', 'Sungani profaile'],
 };
 
 function esc(s) {

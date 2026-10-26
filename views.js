@@ -14,7 +14,7 @@ function bizCard(b) {
   return `
   <a class="biz-card reveal" href="/business/${esc(b.slug)}">
     <div class="biz-head">
-      <div class="biz-avatar">${esc(b.name.slice(0, 2).toUpperCase())}</div>
+      <div class="biz-avatar">${b.logo_path ? `<img src="/logo/${b.id}" alt="${esc(b.name)}">` : esc(b.name.slice(0, 2).toUpperCase())}</div>
       <div class="biz-tt">
         <b>${esc(b.name)}</b>
         ${b.verified ? '<span class="v-chip">✓ ' + t('biz.verified') + '</span>' : ''}
@@ -250,7 +250,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
   <section class="biz-hero">
     <div class="wrap">
       <div class="biz-hero-top">
-        <div class="biz-avatar big">${esc(b.name.slice(0, 2).toUpperCase())}</div>
+        <div class="biz-avatar big">${b.logo_path ? `<img src="/logo/${b.id}" alt="${esc(b.name)}">` : esc(b.name.slice(0, 2).toUpperCase())}</div>
         <div>
           <h1>${esc(b.name)}</h1>
           <p class="muted">${esc(b.category)} · ${esc(b.city)}, ${esc(b.country)}</p>
@@ -415,7 +415,7 @@ function addBizPage({ user, err, values, added, dups }) {
   <section class="page-head"><div class="wrap narrow">
     <h1 class="sec">${t('add.title')}</h1>
     <p class="sec-sub muted">${t('add.sub')}</p>
-    <form class="form" method="post" action="/businesses/new">
+    <form class="form" method="post" action="/businesses/new" enctype="multipart/form-data">
       ${errBox}
       ${dupBox}
       <div class="f-row"><label for="bn">${t('add.name')}</label><input id="bn" name="name" required maxlength="100" value="${esc(v.name || added || '')}"></div>
@@ -429,6 +429,8 @@ function addBizPage({ user, err, values, added, dups }) {
         <div class="f-row"><label for="bw">${t('add.website')}</label><input id="bw" name="website" maxlength="200" value="${esc(v.website || '')}" placeholder="https://…"></div>
         <div class="f-row"><label for="bp">${t('add.phone')}</label><input id="bp" name="phone" maxlength="30" value="${esc(v.phone || '')}"></div>
       </div>
+      <div class="f-row"><label for="bl">${t('add.logo')}</label><input id="bl" name="logo" type="file" accept="image/png,image/jpeg,image/webp">
+      <p class="tiny muted">${t('add.logoHelp')}</p></div>
       <button class="btn btn-green w100" type="submit">${t('add.submit')} →</button>
     </form>
   </div></section>` });
@@ -564,10 +566,33 @@ function bizManagePage({ user, b, reviews }) {
            </form>`}
     </div>`).join('');
 
+  const catOpts = CATEGORIES.map(c => `<option ${b.category === c ? 'selected' : ''}>${c}</option>`).join('');
+  const ctyOpts = COUNTRIES.map(c => `<option ${b.country === c ? 'selected' : ''}>${c}</option>`).join('');
   return layout({ title: `Manage ${b.name} — The Legit Rank`, user, content: `
   <section class="page-head"><div class="wrap">
     <h1 class="sec">${esc(b.name)}</h1>
     <p class="sec-sub muted"><a href="/business/${esc(b.slug)}">${t('biz.reviews')} →</a></p>
+    <form class="form" method="post" action="/business/${esc(b.slug)}/profile" enctype="multipart/form-data">
+      <div class="f2">
+        <div class="f-row"><label for="pl">${t('mg.logo')}</label><input id="pl" name="logo" type="file" accept="image/png,image/jpeg,image/webp">
+        <p class="tiny muted">${t('add.logoHelp')}</p></div>
+        <div class="f-row"><label>${t('mg.current')}</label>
+        <div class="biz-avatar big">${b.logo_path ? `<img src="/logo/${b.id}" alt="${esc(b.name)}">` : esc(b.name.slice(0, 2).toUpperCase())}</div></div>
+      </div>
+      <div class="f-row"><label for="pn2">${t('add.name')}</label><input id="pn2" name="name" required maxlength="120" value="${esc(b.name)}"></div>
+      <div class="f2">
+        <div class="f-row"><label for="pc">${t('add.category')}</label><select id="pc" name="category">${catOpts}</select></div>
+        <div class="f-row"><label for="pco">${t('add.country')}</label><select id="pco" name="country">${ctyOpts}</select></div>
+      </div>
+      <div class="f2">
+        <div class="f-row"><label for="pci">${t('add.city')}</label><input id="pci" name="city" maxlength="80" value="${esc(b.city)}"></div>
+        <div class="f-row"><label for="pp">${t('add.phone')}</label><input id="pp" name="phone" maxlength="40" value="${esc(b.phone || '')}"></div>
+      </div>
+      <div class="f-row"><label for="pw2">${t('add.website')}</label><input id="pw2" name="website" maxlength="200" value="${esc(b.website || '')}" placeholder="https://…"></div>
+      <div class="f-row"><label for="pd2">${t('add.desc')}</label><textarea id="pd2" name="description" rows="3" maxlength="600">${esc(b.description || '')}</textarea></div>
+      <button class="btn btn-green" type="submit">${t('mg.save')} →</button>
+    </form>
+    <h2 class="dash-h">${t('biz.reviews')}</h2>
     ${reviews.length ? items : `<div class="empty"><p class="muted">${t('biz.noReviews')}</p></div>`}
   </div></section>` });
 }
@@ -709,7 +734,7 @@ function adminBusinessDetail({ user, b, reviews, others, msg }) {
   <p><a href="/business/${esc(b.slug)}">View public profile →</a> · ${statusChip(b.status)} ·
     ${b.verified ? `<span class="v-chip">verified ${esc((b.verified_at || '').slice(0, 10))}</span>` : '<span class="nv-chip">unverified</span>'}</p>
   <div class="adm-cols">
-    <form method="post" action="/admin/business/${b.id}/edit" class="card form adm-block">
+    <form method="post" action="/admin/business/${b.id}/edit" class="card form adm-block" enctype="multipart/form-data">
       <h3>Edit listing</h3>
       <div class="f-row"><label>Name</label><input name="name" value="${esc(b.name)}" required maxlength="120"></div>
       <div class="f-row"><label>Category</label><input name="category" value="${esc(b.category)}" required maxlength="60"></div>
@@ -718,6 +743,8 @@ function adminBusinessDetail({ user, b, reviews, others, msg }) {
       <div class="f-row"><label>Description</label><textarea name="description" rows="3" maxlength="600">${esc(b.description || '')}</textarea></div>
       <div class="f-row"><label>Website</label><input name="website" value="${esc(b.website || '')}" maxlength="200"></div>
       <div class="f-row"><label>Phone</label><input name="phone" value="${esc(b.phone || '')}" maxlength="40"></div>
+      <div class="f-row"><label>Business logo</label><input name="logo" type="file" accept="image/png,image/jpeg,image/webp">
+      ${b.logo_path ? `<img class="adm-logo-prev" src="/logo/${b.id}" alt="current logo">` : ''}</div>
       <button class="btn-mini btn-mini-g" type="submit">Save changes</button>
     </form>
     <div>
