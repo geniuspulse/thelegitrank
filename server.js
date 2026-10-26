@@ -381,6 +381,13 @@ async function handle(req, res) {
       return html(res, 200, views.adminAudit({ user, entries, msg: q.get('msg') }));
     }
 
+    m = pathname.match(/^\/photo\/(\d+)$/);
+    if (m) {
+      const f = dbm.photoFile(Number(m[1]));
+      if (!f) return send(res, 404, 'Not found');
+      res.writeHead(200, { 'Content-Type': f.mime, 'Cache-Control': 'public, max-age=86400' });
+      return res.end(f.data);
+    }
     m = pathname.match(/^\/admin\/review\/(\d+)\/receipt$/);
     if (m) {
       if (!admAllow(user, 'moderation')) return send(res, 404, 'Not found');
@@ -497,19 +504,21 @@ async function handle(req, res) {
       const b = dbm.getBusinessBySlug(m[1]);
       if (!b) return html(res, 404, views.notFound({ user }));
       if (user.status && user.status !== 'active') return redirect(res, '/dashboard?msg=restricted');
+      if (rateLimited('rev:' + user.id, 5)) return redirect(res, '/dashboard?msg=revRate');
       const rating = Math.min(5, Math.max(1, parseInt(body.rating, 10) || 0));
       const title = String(body.title || '').trim().slice(0, 100);
       const text = String(body.body || '').trim().slice(0, 2000);
       const minLen = parseInt(dbm.settingGet('review_min_length', 20), 10) || 20;
       if (!rating || text.length < minLen) return redirect(res, `/business/${m[1]}/review`);
       const existing = dbm.myReview(b.id, user.id);
-      const saveRcpt = (id) => {
-        const f = body.receipt;
+      const saveMedia = (id, field, saver) => {
+        const f = body[field];
         if (f && f.__file && f.data && f.data.length && /^image\/(png|jpe?g|webp)$/.test(f.mime) && f.data.length <= 2.5 * 1024 * 1024) {
           const ext = f.mime === 'image/png' ? 'png' : f.mime === 'image/webp' ? 'webp' : 'jpg';
-          dbm.saveReceipt(id, f.data, ext);
+          saver(id, f.data, ext);
         }
       };
+      const saveRcpt = (id) => saveMedia(id, 'receipt', dbm.saveReceipt);
       if (existing) {
         dbm.db.prepare('UPDATE reviews SET rating=?, title=?, body=? WHERE id = ?')
           .run(rating, title, text, existing.id);
@@ -519,6 +528,12 @@ async function handle(req, res) {
       const rid = Number(dbm.db.prepare('INSERT INTO reviews (business_id, user_id, rating, title, body, created_at) VALUES (?,?,?,?,?,?)')
         .run(b.id, user.id, rating, title, text, nowIso()).lastInsertRowid);
       saveRcpt(rid);
+      saveMedia(rid, 'photo', dbm.savePhoto);
+      const reasons = dbm.autoFlagReasons(title, text);
+      if (reasons.length) {
+        dbm.addReport({ type: 'review', review_id: rid, details: 'Auto-flagged: ' + reasons.join('; ') });
+        dbm.audit(user, 'review.auto_flagged', 'review', rid, reasons.join('; '));
+      }
       return redirect(res, `/business/${m[1]}?msg=reviewPosted`);
     }
 

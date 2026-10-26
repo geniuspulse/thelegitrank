@@ -98,7 +98,7 @@ function flash(msg) {
     bizAdded: tRaw('add.added'), claimSent: tRaw('claim.sent'),
     verSent: tRaw('ver.sent'), respPosted: tRaw('resp.posted'),
     approved: tRaw('adm.approved'), rejected: tRaw('adm.rejected'),
-    'rep.done': tRaw('rep.done'), restricted: tRaw('rev.restricted'),
+    'rep.done': tRaw('rep.done'), restricted: tRaw('rev.restricted'), revRate: tRaw('rev.rate'),
     nameUpdated: tRaw('dash.nameUpdated'), nameMissing: tRaw('dash.nameMissing'),
     passUpdated: tRaw('dash.passUpdated'), passWrong: tRaw('dash.passWrong'),
   }[msg];
@@ -217,6 +217,7 @@ function reviewItem(r, isOwner) {
       <span class="stars-a push">${stars(r.rating)}</span>
     </div>
     ${r.title ? `<h4>${esc(r.title)}</h4>` : ''}
+    ${r.photo_path ? `<a href="/photo/${r.id}" target="_blank"><img class="rev-photo" src="/photo/${r.id}" alt="review photo" loading="lazy"></a>` : ''}
     <p>${esc(r.body)}</p>
     ${r.response_text ? `
       <div class="resp-block">
@@ -333,6 +334,8 @@ function reviewForm({ user, b, existing }) {
         <div class="f-row"><label>${t('rev.rating')}</label><div class="stars-input">${cur}</div></div>
         <div class="f-row"><label for="rt">${t('rev.name')}</label><input id="rt" name="title" maxlength="100" value="${esc(r.title)}" placeholder="${esc(tRaw('rev.namePh'))}"></div>
         <div class="f-row"><label for="rb">${t('rev.body')}</label><textarea id="rb" name="body" rows="5" maxlength="2000" required placeholder="${esc(tRaw('rev.bodyPh'))}">${esc(r.body)}</textarea></div>
+        <div class="f-row"><label for="ph">${t('rev.photo')}</label><input id="ph" name="photo" type="file" accept="image/png,image/jpeg,image/webp">
+        <p class="tiny muted">${t('rev.photoHelp')}</p></div>
         <div class="f-row"><label for="rc">${t('rev.receipt')}</label><input id="rc" name="receipt" type="file" accept="image/png,image/jpeg,image/webp">
         <p class="tiny muted">${t('rev.receiptHelp')}</p></div>
         <div class="f-actions"><button class="btn btn-green" type="submit">${t('rev.submit')} →</button>

@@ -9,9 +9,9 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 4. "Verified purchase" badge — receipt/proof upload on reviews
 - [ ] 5. Business verification tiers (docs, address, phone)
 - [x] 6. Duplicate business detection before adding
-- [ ] 7. Review attachments (photos of product/delivery)
-- [ ] 8. Moderation queue with auto-flagging (spam, profanity)
-- [ ] 9. Rate limiting reviews per user per business
+- [x] 7. Review attachments (photos of product/delivery)
+- [x] 8. Moderation queue with auto-flagging (spam, profanity)
+- [x] 9. Rate limiting reviews per user per business
 - [ ] 10. Block owners reviewing their own business
 - [x] 11. Report/flag buttons on reviews and profiles
 - [x] 12. Admin analytics dashboard (signups, reviews, flags/day)

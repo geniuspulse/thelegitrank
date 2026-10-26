@@ -230,6 +230,9 @@ const DICT = {
   'add.dupWarn': ['This business may already be listed.', 'Bizinesiyi mutha kuti ili kale mndandanda.'],
   'add.dupTitle': ['Possible duplicates found', 'Zingapezeka kuti ndi zimodzimodzinso'],
   'add.dupConfirm': ['None of these are the same business — list it anyway', 'Izi sizinthu zimodzinso — yikani pokha'],
+  'rev.photo': ['Photo of product or delivery (optional)', 'Chithunzi cha katundu kapena kufika kwake (kwa okha)'],
+  'rev.photoHelp': ['Shown publicly with your review. A photo of what you received helps other buyers.', 'Imaonekera pamodzi ndi ndemanga yanu. Chithunzi cha zimene munalandira chimathandiza ogula ena.'],
+  'rev.rate': ['You are posting reviews too quickly. Please wait a moment.', "Mukulemba ndemanga msanga mnaderero. Chonde dikirani pang'oko."],
 };
 
 function esc(s) {

@@ -101,6 +101,7 @@ function migrate() {
   if (!rc.includes('hidden_reason')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_reason TEXT DEFAULT ''`);
   if (!rc.includes('hidden_by')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_by INTEGER`);
   if (!rc.includes('hidden_at')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_at TEXT`);
+  if (!rc.includes('photo_path')) db.exec(`ALTER TABLE reviews ADD COLUMN photo_path TEXT`);
   if (!rc.includes('receipt_path')) db.exec(`ALTER TABLE reviews ADD COLUMN receipt_path TEXT`);
   if (!rc.includes('verified_purchase')) db.exec(`ALTER TABLE reviews ADD COLUMN verified_purchase INTEGER DEFAULT 0`);
   const vc = cols('verifications');
@@ -413,6 +414,42 @@ function receiptFile(reviewId) {
   try { return { data: fs.readFileSync(p), mime: r.receipt_path.endsWith('.png') ? 'image/png' : r.receipt_path.endsWith('.webp') ? 'image/webp' : 'image/jpeg' }; }
   catch { return null; }
 }
+function savePhoto(reviewId, data, ext) {
+  const dir = path.join(DATA_DIR, 'uploads');
+  fs.mkdirSync(dir, { recursive: true });
+  const rel = 'photo-' + reviewId + '.' + ext;
+  fs.writeFileSync(path.join(dir, rel), data);
+  db.prepare('UPDATE reviews SET photo_path = ? WHERE id = ?').run('uploads/' + rel, reviewId);
+}
+function photoFile(reviewId) {
+  const r = db.prepare('SELECT photo_path, hidden FROM reviews WHERE id = ?').get(reviewId);
+  if (!r || !r.photo_path || r.hidden) return null;
+  try { return { data: fs.readFileSync(path.join(DATA_DIR, r.photo_path)), mime: r.photo_path.endsWith('.png') ? 'image/png' : r.photo_path.endsWith('.webp') ? 'image/webp' : 'image/jpeg' }; }
+  catch { return null; }
+}
+// auto-flagging: returns list of reasons a review text is suspicious
+const PROFANITY = ['fuck', 'shit', 'bitch', 'asshole', 'bastard', 'idiot', 'stupid fool'];
+const SPAM_PATTERNS = [
+  [/\b\+?2[5-7]\d{8,12}\b/, 'contains a phone number'],
+  [/\b(whatsapp|whats\s?app)\b[\s\S]{0,40}\b(me|us|now|today)\b/i, 'asks readers to move off-platform'],
+  [/\b(dm|inbox|call)\s+(me|us|now)\b/i, 'off-platform solicitation'],
+  [/\bfollow\b[\s\S]{0,30}\b(instagram|facebook|tiktok|snapchat)\b/i, 'social media promotion'],
+  [/\b(buy|order|shop)\s+(from|at)\s+\w+\s+(now|today)\b/i, 'promotional language'],
+];
+function autoFlagReasons(title, text) {
+  const raw = (title + ' ' + text).trim();
+  const lower = raw.toLowerCase();
+  const reasons = [];
+  PROFANITY.forEach(w => { if (lower.includes(w)) { reasons.push('profanity'); return false; } });
+  SPAM_PATTERNS.forEach(([re, why]) => { if (re.test(raw)) reasons.push(why); });
+  const letters = raw.replace(/[^a-z]/gi, '');
+  if (raw.length > 40 && letters.length > 30) {
+    const caps = raw.replace(/[^A-Z]/g, '').length;
+    if (caps / letters.length > 0.75) reasons.push('excessive capitals');
+  }
+  if (/(.)\1{6,}/.test(raw)) reasons.push('repeated characters');
+  return [...new Set(reasons)];
+}
 function findBusinessDuplicates(name, city) {
   const norm = x => String(x).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const tokens = norm(name).split(' ').filter(w => w.length > 2);
@@ -437,4 +474,5 @@ module.exports = {
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
   addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,
   settingGet, settingSet, listCategories, myAppealFor, saveReceipt, receiptFile, findBusinessDuplicates,
+  savePhoto, photoFile, autoFlagReasons,
 };
