@@ -212,7 +212,7 @@ function reviewItem(r, isOwner) {
   <article class="review-card">
     <div class="review-head">
       <div class="avatar">${esc((r.author_name || 'A').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</div>
-      <div class="who"><b>${esc(r.author_name)}</b><span>${new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
+      <div class="who"><b>${esc(r.author_name)}</b><span>${new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}${r.updated_at ? ' · ' + t('biz.updated') : ''}</span></div>
       ${r.verified_purchase ? `<span class="vp-chip">✓ ${t('biz.vp')}</span>` : ''}
       <span class="stars-a push">${stars(r.rating)}</span>
     </div>

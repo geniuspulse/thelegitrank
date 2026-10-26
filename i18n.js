@@ -87,7 +87,7 @@ const DICT = {
   'rev.body': ['Your review', 'Ndemanga yanu'],
   'rev.bodyPh': ['Tell other buyers about your experience — delivery, quality, communication.', 'Nenani ogula ena za zomwe mwakumana nazo — katundu, chitsulo, kuyankhana.'],
   'rev.submit': ['Post review', 'Tumizani ndemanga'],
-  'rev.rules': ['Reviews are tied to real accounts. One review per business per account.', 'Ndemanga zimalumikizidwa ndi akaunti zenizeni. Ndemanga imodzi pa bizinesi pa akaunti.'],
+  'rev.rules': ['Reviews are tied to real accounts. You can update your review anytime — your latest experience is what other buyers see.', "Ndemanga zimamangidwa ndi akaunti zenizeni. Mungasinthe ndemanga yanu nthawi iliyonse — zomwe mumaona pambuyo pake ndizo ogula ena amaona."],
   'rev.updated': ['Review updated.', 'Ndemanga yasinthidwa.'],
   'rev.posted': ['Review posted. Thank you!', 'Ndemanga yatumizidwa. Zikomo!'],
   'rev.deleted': ['Review deleted.', 'Ndemanga yafutidwa.'],
@@ -233,6 +233,7 @@ const DICT = {
   'rev.photo': ['Photo of product or delivery (optional)', 'Chithunzi cha katundu kapena kufika kwake (kwa okha)'],
   'rev.photoHelp': ['Shown publicly with your review. A photo of what you received helps other buyers.', 'Imaonekera pamodzi ndi ndemanga yanu. Chithunzi cha zimene munalandira chimathandiza ogula ena.'],
   'rev.rate': ['You are posting reviews too quickly. Please wait a moment.', "Mukulemba ndemanga msanga mnaderero. Chonde dikirani pang'oko."],
+  'biz.updated': ['updated', 'yasinthidwa'],
 };
 
 function esc(s) {

@@ -520,8 +520,8 @@ async function handle(req, res) {
       };
       const saveRcpt = (id) => saveMedia(id, 'receipt', dbm.saveReceipt);
       if (existing) {
-        dbm.db.prepare('UPDATE reviews SET rating=?, title=?, body=? WHERE id = ?')
-          .run(rating, title, text, existing.id);
+        dbm.db.prepare('UPDATE reviews SET rating=?, title=?, body=?, updated_at=? WHERE id = ?')
+          .run(rating, title, text, nowIso(), existing.id);
         saveRcpt(existing.id);
         return redirect(res, `/business/${m[1]}?msg=reviewUpdated`);
       }

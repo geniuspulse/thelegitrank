@@ -101,6 +101,7 @@ function migrate() {
   if (!rc.includes('hidden_reason')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_reason TEXT DEFAULT ''`);
   if (!rc.includes('hidden_by')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_by INTEGER`);
   if (!rc.includes('hidden_at')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_at TEXT`);
+  if (!rc.includes('updated_at')) db.exec(`ALTER TABLE reviews ADD COLUMN updated_at TEXT`);
   if (!rc.includes('photo_path')) db.exec(`ALTER TABLE reviews ADD COLUMN photo_path TEXT`);
   if (!rc.includes('receipt_path')) db.exec(`ALTER TABLE reviews ADD COLUMN receipt_path TEXT`);
   if (!rc.includes('verified_purchase')) db.exec(`ALTER TABLE reviews ADD COLUMN verified_purchase INTEGER DEFAULT 0`);
