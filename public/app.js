@@ -22,6 +22,23 @@
   var lb = document.getElementById('langBtn');
   if (lb) lb.addEventListener('click', window.toggleLang);
 
+  // ---------- mobile menu ----------
+  var mb = document.getElementById('menuBtn');
+  var menu = document.getElementById('menu');
+  if (mb && menu) {
+    mb.addEventListener('click', function () {
+      var open = menu.classList.toggle('open');
+      mb.classList.toggle('open', open);
+      mb.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    menu.addEventListener('click', function (e) {
+      if (e.target.closest('a')) { menu.classList.remove('open'); mb.classList.remove('open'); mb.setAttribute('aria-expanded', 'false'); }
+    });
+    document.addEventListener('click', function (e) {
+      if (!menu.contains(e.target) && !mb.contains(e.target)) { menu.classList.remove('open'); mb.classList.remove('open'); mb.setAttribute('aria-expanded', 'false'); }
+    });
+  }
+
   // ---------- star rating input ----------
   document.addEventListener('DOMContentLoaded', function () {
     var wrap = document.querySelector('.stars-input');

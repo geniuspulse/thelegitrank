@@ -203,3 +203,17 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
   *{animation:none!important;transition:none!important}
   html{scroll-behavior:auto}
 }
+
+/* mobile menu */
+.burger{display:inline-flex;flex-direction:column;justify-content:center;gap:4px;width:38px;height:38px;background:transparent;border:1px solid rgba(255,255,255,.35);border-radius:10px;cursor:pointer;padding:8px}
+.burger span{display:block;height:2px;background:#fff;border-radius:2px;transition:transform .25s,opacity .2s}
+.burger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.burger.open span:nth-child(2){opacity:0}
+.burger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+.menu{display:none;position:sticky;top:57px;z-index:49;background:var(--navy-2);border-bottom:1px solid rgba(255,255,255,.1);padding:8px 20px 16px;box-shadow:0 24px 48px rgba(0,0,0,.45)}
+.menu.open{display:block}
+.menu a,.menu button{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.08);color:#e2e8f0;font-family:'Inter',sans-serif;font-size:1rem;font-weight:600;text-decoration:none;padding:13px 4px;cursor:pointer}
+.menu a:last-of-type,.menu button{border-bottom:none}
+.menu a:hover,.menu button:hover{color:var(--emerald-2)}
+.menu .menu-hl{color:var(--emerald-2);font-weight:700}
+@media(min-width:900px){.burger{display:none}.menu{display:none!important}}

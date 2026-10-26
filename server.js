@@ -94,6 +94,7 @@ function send(res, code, body, headers = {}) {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-origin-when-cross-origin',
+    'Cache-Control': 'no-cache',
     ...headers,
   });
   res.end(body);
@@ -110,14 +111,17 @@ function redirect(res, loc, extraCookies) {
 }
 
 const MIME = { '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png' };
-function serveStatic(res, file) {
+function serveStatic(req, res, file) {
   const p = path.join(__dirname, 'public', file);
   if (!p.startsWith(path.join(__dirname, 'public'))) return send(res, 404, 'Not found');
   fs.readFile(p, (err, data) => {
     if (err) return send(res, 404, 'Not found');
+    const etag = '"' + crypto.createHash('sha1').update(data).digest('hex') + '"';
+    if (req.headers['if-none-match'] === etag) { res.writeHead(304); return res.end(); }
     res.writeHead(200, {
       'Content-Type': MIME[path.extname(p)] || 'application/octet-stream',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'no-cache',
+      'ETag': etag,
       'X-Content-Type-Options': 'nosniff',
     });
     res.end(data);
@@ -142,8 +146,8 @@ async function handle(req, res) {
   if (method === 'POST' && rateLimited(ip, 60)) return send(res, 429, 'Too many requests');
 
   if (method === 'GET' || method === 'HEAD') {
-    if (pathname === '/style.css') return serveStatic(res, 'style.css');
-    if (pathname === '/app.js') return serveStatic(res, 'app.js');
+    if (pathname === '/style.css') return serveStatic(req, res, 'style.css');
+    if (pathname === '/app.js') return serveStatic(req, res, 'app.js');
     if (pathname === '/favicon.ico') return send(res, 204, '');
   }
 

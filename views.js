@@ -43,15 +43,21 @@ function layout({ title, content, user, hero = false }) {
       </div>
       <div class="nav-cta">
         <button class="lang" id="langBtn" type="button">Chichewa</button>
-        ${user
-          ? `<a class="nav-user" href="/dashboard" title="${esc(user.name)}">${esc(user.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</a>
-             ${user.role === 'admin' ? `<a class="nav-admin" href="/admin">${t('nav.admin')}</a>` : ''}
-             <form method="post" action="/logout" class="inline"><button class="lang" type="submit">${t('nav.logout')}</button></form>`
-          : `<a class="btn-mini" href="/login">${t('nav.login')}</a>
-             <a class="btn-mini btn-mini-g" href="/signup">${t('nav.signup')}</a>`}
+        ${user ? `<a class="nav-user" href="/dashboard" title="${esc(user.name)}">${esc(user.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</a>` : ''}
+        <button class="burger" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
       </div>
     </div>
-  </nav>`;
+  </nav>
+  <div class="menu" id="menu">
+    <a href="/search">${t('nav.check')}</a>
+    <a href="/businesses/new">${t('nav.add')}</a>
+    <a href="/dashboard">${t('nav.account')}</a>
+    ${user && user.role === 'admin' ? `<a href="/admin">${t('nav.admin')}</a>` : ''}
+    ${user
+      ? `<form method="post" action="/logout"><button type="submit">${t('nav.logout')}</button></form>`
+      : `<a class="menu-hl" href="/signup">${t('nav.signup')}</a>
+         <a href="/login">${t('nav.login')}</a>`}
+  </div>`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
