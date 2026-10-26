@@ -98,6 +98,7 @@ function flash(msg) {
     bizAdded: tRaw('add.added'), claimSent: tRaw('claim.sent'),
     verSent: tRaw('ver.sent'), respPosted: tRaw('resp.posted'),
     approved: tRaw('adm.approved'), rejected: tRaw('adm.rejected'),
+    'rep.done': tRaw('rep.done'), restricted: tRaw('rev.restricted'),
     nameUpdated: tRaw('dash.nameUpdated'), nameMissing: tRaw('dash.nameMissing'),
     passUpdated: tRaw('dash.passUpdated'), passWrong: tRaw('dash.passWrong'),
   }[msg];
@@ -241,7 +242,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
 
   const ownerBar = b.owner_user_id
     ? ''
-    : `<a class="claim-link" href="/claim/${esc(b.slug)}">${t('biz.claim')}</a>`;
+    : `<a class="claim-link" href="/claim/${esc(b.slug)}">${t('biz.claim')}</a> <a class="claim-link" href="/report?type=scam&biz=${esc(b.slug)}">${t('biz.report')}</a>`;
 
   return layout({ title: `${b.name} — Reviews — The Legit Rank`, user, content: `
   <section class="biz-hero">
@@ -353,7 +354,7 @@ function loginPage({ next, err }) {
     <div class="wrap narrow">
       <form class="form auth-card" method="post" action="/login">
         <input type="hidden" name="next" value="${esc(next || '')}">
-        ${err ? `<div class="form-err">${t('auth.badlogin')}</div>` : ''}
+        ${err === 'suspended' ? `<div class="form-err">${t('auth.suspended')}</div>` : err ? `<div class="form-err">${t('auth.badlogin')}</div>` : ''}
         <div class="f-row"><label for="em">${t('auth.email')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m3 6 9 7 9-7"/></svg><input id="em" name="email" type="email" required autocomplete="email" placeholder="you@example.com"></div></div>
         <div class="f-row"><label for="pw">${t('auth.password')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="pw" name="password" type="password" required autocomplete="current-password" placeholder="••••••••"></div></div>
         <button class="btn btn-green w100" type="submit">${t('auth.enter')} →</button>
@@ -436,7 +437,7 @@ function claimPage({ user, b, err }) {
 }
 
 // ---------- DASHBOARD ----------
-function dashboard({ user, reviews, owned, pendingV, msg }) {
+function dashboard({ user, reviews, owned, pendingV, hidden, appeals, msg }) {
   const initials = esc((user.name || 'A').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
   const since = new Date(user.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
   const verifiedCount = owned.filter(b => b.verified).length;
@@ -491,6 +492,27 @@ function dashboard({ user, reviews, owned, pendingV, msg }) {
     ${flash(msg || '')}
     <h2 class="dash-h">${t('dash.myReviews')}</h2>
     ${reviews.length ? revRows : `<div class="empty"><p class="muted">${t('dash.noReviews')}</p><a class="btn-mini btn-mini-g" href="/search">${t('nav.browse')} →</a></div>`}
+    ${hidden.length ? `
+    <h2 class="dash-h">${t('dash.hiddenTitle')}</h2>
+    ${hidden.map(r => {
+      const ap = appeals[r.id];
+      return `
+      <div class="card row-card col">
+        <div class="rev-me-top">
+          <b><a href="/business/${esc(r.biz_slug)}">${esc(r.biz_name)}</a></b>
+          <span class="stars-a">${stars(r.rating)}</span>
+          <span class="p-chip">${t('dash.hiddenChip')}</span>
+        </div>
+        <p class="small muted">${esc((r.body || '').slice(0, 140))}</p>
+        ${r.hidden_reason ? `<p class="small muted">${t('dash.hiddenReason')}: ${esc(r.hidden_reason)}</p>` : ''}
+        ${ap ? `<span class="nv-chip">${t('dash.appealState')}: ${esc(ap.status)}</span>`
+             : `<form method="post" action="/appeal/${r.id}" class="form resp-form">
+                  <textarea name="reason" rows="2" required maxlength="500" placeholder="${esc(tRaw('dash.appealPh'))}"></textarea>
+                  <button class="btn-mini btn-mini-g" type="submit">${t('dash.appeal')} →</button>
+                </form>`}
+      </div>`;
+    }).join('')}
+    ` : ''}
     <h2 class="dash-h">${t('dash.myBusinesses')}</h2>
     ${owned.length ? bizRows : `<div class="empty"><p class="muted">${t('dash.noBusinesses')}</p><a class="btn-mini btn-mini-g" href="/businesses/new">${t('dash.addBiz')} →</a></div>`}
     <h2 class="dash-h">${t('dash.settings')}</h2>
@@ -515,6 +537,7 @@ function bizManagePage({ user, b, reviews }) {
       <div class="review-head">
         <div class="avatar">${esc((r.author_name || 'A').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</div>
         <div class="who"><b>${esc(r.author_name)}</b><span>${new Date(r.created_at).toLocaleDateString('en-GB')}</span></div>
+        <a class="muted small" href="/report?type=review&review=${r.id}">${t('biz.report')}</a>
         <span class="stars-a push">${stars(r.rating)}</span>
       </div>
       ${r.title ? `<h4>${esc(r.title)}</h4>` : ''}
@@ -563,67 +586,394 @@ function verifyPage({ user, b, err, pending }) {
 }
 
 // ---------- ADMIN ----------
-function adminPage({ user, vers, claims, bizs, revs, tab, msg }) {
-  const tabs = ['verifications', 'claims', 'businesses', 'reviews'].map(t2 =>
-    `<a class="chip ${t2 === tab ? 'chip-on' : ''}" href="/admin?tab=${t2}">${esc(t2)}</a>`).join('');
-
-  let body = `<div class="empty"><p class="muted">${t('adm.none')}</p></div>`;
-
-  if (tab === 'verifications' && vers.length) {
-    body = vers.map(v => `
-      <div class="card row-card col">
-        <b>${esc(v.biz_name)}</b>
-        <p class="small muted">${t('adm.by')}: ${esc(v.user_name)} · ${esc(v.id_type)} ${esc(v.id_number)} · ${esc(v.pay_method)} (${esc(v.pay_name)})</p>
-        ${v.notes ? `<p class="small">${esc(v.notes)}</p>` : ''}
-        <div class="row-actions">
-          <form method="post" action="/admin/verification/${v.id}" class="inline"><input type="hidden" name="decision" value="approve"><button class="btn-mini btn-mini-g">${t('adm.approve')}</button></form>
-          <form method="post" action="/admin/verification/${v.id}" class="inline"><input type="hidden" name="decision" value="reject"><button class="btn-mini">${t('adm.reject')}</button></form>
-        </div>
-      </div>`).join('');
-  }
-  if (tab === 'claims' && claims.length) {
-    body = claims.map(c => `
-      <div class="card row-card col">
-        <b>${esc(c.biz_name)}</b>
-        <p class="small muted">${t('adm.by')}: ${esc(c.user_name)} (${esc(c.contact)})</p>
-        <p class="small">${esc(c.details)}</p>
-        <div class="row-actions">
-          <form method="post" action="/admin/claim/${c.id}" class="inline"><input type="hidden" name="decision" value="approve"><button class="btn-mini btn-mini-g">${t('adm.approve')}</button></form>
-          <form method="post" action="/admin/claim/${c.id}" class="inline"><input type="hidden" name="decision" value="reject"><button class="btn-mini">${t('adm.reject')}</button></form>
-        </div>
-      </div>`).join('');
-  }
-  if (tab === 'businesses' && bizs.length) {
-    body = bizs.map(b => `
-      <div class="card row-card">
-        <div><b><a href="/business/${esc(b.slug)}">${esc(b.name)}</a></b>
-          <p class="small muted">${esc(b.city)}, ${esc(b.country)} · ${b.avg_rating || '–'} ★ · ${b.review_count} · ${b.verified ? '✓' : '×'}</p></div>
-        <div class="row-actions">
-          ${b.verified ? '' : `<form method="post" action="/admin/business/${b.id}/verify" class="inline"><button class="btn-mini btn-mini-g">${t('adm.approve')}</button></form>`}
-          <form method="post" action="/admin/business/${b.id}/${b.status === 'active' ? 'remove' : 'restore'}" class="inline">
-            <button class="btn-mini">${b.status === 'active' ? t('adm.remove') : t('adm.restore')}</button></form>
-        </div>
-      </div>`).join('');
-  }
-  if (tab === 'reviews' && revs.length) {
-    body = revs.map(r => `
-      <div class="card row-card">
-        <div><b><a href="/business/${esc(r.biz_slug)}">${esc(r.biz_name)}</a></b>
-          <p class="small">${stars(r.rating)} ${esc((r.title || r.body).slice(0, 100))}</p>
-          <p class="small muted">${t('adm.by')} ${esc(r.author_name)} ${r.hidden ? '· hidden' : ''}</p></div>
-        <div class="row-actions">
-          <form method="post" action="/admin/review/${r.id}/${r.hidden ? 'show' : 'hide'}" class="inline">
-            <button class="btn-mini">${r.hidden ? t('adm.show') : t('adm.hide')}</button></form>
-        </div>
-      </div>`).join('');
-  }
-
-  return layout({ title: 'Admin — The Legit Rank', user, content: `
+// ---------- ADMIN CONTROL CENTRE ----------
+const ADM_SECTIONS = [
+  ['overview', 'Overview', '/admin'],
+  ['businesses', 'Businesses', '/admin/businesses'],
+  ['verifications', 'Verification', '/admin/verifications'],
+  ['moderation', 'Moderation', '/admin/moderation'],
+  ['reports', 'Reports', '/admin/reports'],
+  ['users', 'Users', '/admin/users'],
+  ['settings', 'Settings', '/admin/settings'],
+  ['analytics', 'Analytics', '/admin/analytics'],
+  ['audit', 'Audit log', '/admin/audit'],
+];
+function admNav(active) {
+  return `<nav class="adm-nav">${ADM_SECTIONS.map(([id, label, href]) =>
+    `<a class="chip ${id === active ? 'chip-on' : ''}" href="${href}">${label}</a>`).join('')}</nav>`;
+}
+function admPage(user, active, heading, inner, msg) {
+  return layout({ title: heading + ' — Control Centre — The Legit Rank', user, content: `
   <section class="page-head"><div class="wrap">
-    <h1 class="sec">${t('adm.title')}</h1>
-    <div class="chips">${tabs}</div>
-    ${flash(msg || '')}
-    ${body}
+    <h1 class="sec">Control Centre</h1>
+    <p class="sec-sub muted small">The Legit Rank staff area — every action is recorded in the audit log.</p>
+    ${admNav(active)}
+    ${msg ? `<div class="adm-msg">${esc(msg)}</div>` : ''}
+    <h2 class="adm-h">${heading}</h2>
+    ${inner}
+  </div></section>` });
+}
+function statusChip(st) {
+  const map = { active: 'v-chip', verified: 'v-chip', approved: 'v-chip', resolved: 'v-chip', published: 'v-chip',
+    pending: 'p-chip', investigating: 'p-chip', docs_requested: 'p-chip', open: 'p-chip', urgent: 'p-chip',
+    suspended: 'nv-chip', removed: 'nv-chip', rejected: 'nv-chip', hidden: 'nv-chip', dismissed: 'nv-chip', restricted: 'nv-chip' };
+  return `<span class="${map[st] || 'nv-chip'}">${esc(st.replace('_', ' '))}</span>`;
+}
+function confirmBox(name, label) {
+  return `<label class="confirm-row"><input type="checkbox" name="${name}" required> ${label}</label>`;
+}
+
+function adminOverview({ user, stats, activity, msg }) {
+  const tiles = [
+    ['Users', stats.users, '/admin/users'], ['Businesses', stats.businesses, '/admin/businesses'],
+    ['Published reviews', stats.reviews, '/admin/moderation'],
+    ['Pending verifications', stats.pendingVerifications, '/admin/verifications'],
+    ['Docs requested', stats.docsRequested, '/admin/verifications'],
+    ['Pending claims', stats.pendingClaims, '/admin/verifications'],
+    ['Open reports', stats.openReports, '/admin/reports'],
+    ['Urgent reports', stats.urgentReports, '/admin/reports'],
+    ['Hidden reviews', stats.hiddenReviews, '/admin/moderation'],
+    ['Suspended users', stats.suspendedUsers, '/admin/users'],
+    ['Pending appeals', stats.pendingAppeals, '/admin/moderation'],
+  ].map(([label, n, href]) => `<a class="stat-tile" href="${href}"><b>${n}</b><span>${label}</span></a>`).join('');
+  const act = activity.map(a =>
+    `<li><span class="muted small">${a.created_at.slice(0, 10)}</span> · <b>${esc(a.kind)}</b> — ${esc(a.label || '')}</li>`).join('');
+  return admPage(user, 'overview', 'Overview', `
+  <div class="stat-tiles">${tiles}</div>
+  <div class="adm-cols">
+    <div class="card adm-block">
+      <h3>Recent activity</h3>
+      <ul class="act-list">${act || '<li class="muted">Nothing yet.</li>'}</ul>
+    </div>
+    <div class="card adm-block">
+      <h3>Five critical questions</h3>
+      <ul class="act-list">
+        <li><b>Legit vs needs verification</b> → <a href="/admin/verifications">Verification centre</a> (${stats.pendingVerifications} pending)</li>
+        <li><b>Genuine vs suspicious reviews</b> → <a href="/admin/moderation">Moderation</a> (${stats.hiddenReviews} hidden, ${stats.pendingAppeals} appeals)</li>
+        <li><b>Scam reports</b> → <a href="/admin/reports">Reports</a> (${stats.openReports} open${stats.urgentReports ? ', <b class="urgent">' + stats.urgentReports + ' urgent</b>' : ''})</li>
+        <li><b>Platform abuse</b> → <a href="/admin/users">Users</a> (${stats.suspendedUsers} restricted/suspended)</li>
+        <li><b>Growth & revenue</b> → <a href="/admin/analytics">Analytics</a></li>
+      </ul>
+    </div>
+  </div>`, msg);
+}
+
+function adminBusinesses({ user, businesses, qq, msg }) {
+  const rows = businesses.map(b => `
+    <tr>
+      <td><a href="/admin/business/${b.id}"><b>${esc(b.name)}</b></a><br><span class="muted small">${esc(b.category)} · ${esc(b.city)}, ${esc(b.country)}</span></td>
+      <td>${b.avg_rating || '–'} ★ (${b.review_count})</td>
+      <td>${b.verified ? '<span class="v-chip">verified</span>' : '<span class="nv-chip">unverified</span>'}</td>
+      <td>${statusChip(b.status)}</td>
+    </tr>`).join('');
+  return admPage(user, 'businesses', 'Business management', `
+  <form method="get" action="/admin/businesses" class="adm-search">
+    <input name="q" value="${esc(qq || '')}" placeholder="Search businesses…">
+    <button class="btn-mini btn-mini-g" type="submit">Search</button>
+  </form>
+  ${businesses.length ? `<table class="adm-table"><thead><tr><th>Business</th><th>Rating</th><th>Verification</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<div class="empty"><p class="muted">No businesses found.</p></div>'}`, msg);
+}
+
+function adminBusinessDetail({ user, b, reviews, others, msg }) {
+  const revRows = reviews.map(r => `
+    <tr>
+      <td><b>${esc(r.author_name)}</b><br><span class="muted small">${esc(r.created_at.slice(0, 10))}</span></td>
+      <td>${stars(r.rating)}<br><span class="small">${esc((r.title || '').slice(0, 60))}</span></td>
+      <td>${r.hidden ? `<span class="nv-chip">hidden</span><br><span class="muted small">${esc(r.hidden_reason || '')}</span>` : '<span class="v-chip">published</span>'}</td>
+      <td>
+        <form method="post" action="/admin/review/${r.id}/${r.hidden ? 'restore' : 'hide'}" class="inline">
+          ${r.hidden ? '' : '<input name="reason" class="mini-input" placeholder="reason" required maxlength="200">'}
+          <button class="btn-mini ${r.hidden ? 'btn-mini-g' : ''}">${r.hidden ? 'Restore' : 'Hide'}</button>
+        </form>
+      </td>
+    </tr>`).join('');
+  const otherOpts = others.map(o => `<option value="${o.id}">${esc(o.name)} (${esc(o.city)})</option>`).join('');
+  return admPage(user, 'businesses', b.name, `
+  <p><a href="/business/${esc(b.slug)}">View public profile →</a> · ${statusChip(b.status)} ·
+    ${b.verified ? `<span class="v-chip">verified ${esc((b.verified_at || '').slice(0, 10))}</span>` : '<span class="nv-chip">unverified</span>'}</p>
+  <div class="adm-cols">
+    <form method="post" action="/admin/business/${b.id}/edit" class="card form adm-block">
+      <h3>Edit listing</h3>
+      <div class="f-row"><label>Name</label><input name="name" value="${esc(b.name)}" required maxlength="120"></div>
+      <div class="f-row"><label>Category</label><input name="category" value="${esc(b.category)}" required maxlength="60"></div>
+      <div class="f-row"><label>City</label><input name="city" value="${esc(b.city)}" required maxlength="80"></div>
+      <div class="f-row"><label>Country</label><input name="country" value="${esc(b.country)}" required maxlength="60"></div>
+      <div class="f-row"><label>Description</label><textarea name="description" rows="3" maxlength="600">${esc(b.description || '')}</textarea></div>
+      <div class="f-row"><label>Website</label><input name="website" value="${esc(b.website || '')}" maxlength="200"></div>
+      <div class="f-row"><label>Phone</label><input name="phone" value="${esc(b.phone || '')}" maxlength="40"></div>
+      <button class="btn-mini btn-mini-g" type="submit">Save changes</button>
+    </form>
+    <div>
+      <div class="card form adm-block">
+        <h3>Suspend / restore</h3>
+        <p class="small muted">Suspended businesses disappear from search and public pages but keep all data.</p>
+        ${b.status === 'active'
+          ? `<form method="post" action="/admin/business/${b.id}/status">${confirmBox('confirm', 'I confirm suspending this listing')}<input type="hidden" name="status" value="suspended"><button class="btn-mini">Suspend listing</button></form>`
+          : `<form method="post" action="/admin/business/${b.id}/status"><input type="hidden" name="status" value="active"><button class="btn-mini btn-mini-g">Restore to active</button></form>`}
+      </div>
+      <div class="card form adm-block">
+        <h3>Merge duplicate</h3>
+        <p class="small muted">Moves all reviews, claims and reports into the surviving listing, then deletes this one. Nothing is lost.</p>
+        <form method="post" action="/admin/businesses/merge">
+          <input type="hidden" name="from" value="${b.id}">
+          <div class="f-row"><label>Surviving business</label><select name="into" required>${otherOpts}</select></div>
+          ${confirmBox('confirm', 'I checked both profiles — merge them')}
+          <button class="btn-mini" type="submit">Merge</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <h3>Review history (${reviews.length})</h3>
+  ${reviews.length ? `<table class="adm-table"><thead><tr><th>Author</th><th>Review</th><th>Status</th><th>Action</th></tr></thead><tbody>${revRows}</tbody></table>`
+    : '<div class="empty"><p class="muted">No reviews yet.</p></div>'}`, msg);
+}
+
+function adminVerifications({ user, pending, decided, claims, msg }) {
+  const pend = pending.map(v => `
+    <div class="card row-card col">
+      <div class="rev-me-top"><b><a href="/admin/business/${v.business_id}">${esc(v.biz_name)}</a></b>
+        <span class="muted small">${esc(v.user_name)} · ${esc(v.created_at.slice(0, 10))}</span></div>
+      <p class="small">ID: <b>${esc(v.id_type)}</b> ····${esc(String(v.id_number).slice(-3))} · Payment: ${esc(v.pay_method)} (${esc(v.pay_name)})</p>
+      ${v.notes ? `<p class="small muted">${esc(v.notes)}</p>` : ''}
+      <p class="tiny muted">Evidence is private. Never share identity documents publicly. A verification badge confirms owner identity and transaction records only — it does not guarantee every transaction is safe.</p>
+      <div class="adm-actions">
+        <form method="post" action="/admin/verification/${v.id}/decision" class="adm-decision">
+          <input type="hidden" name="decision" value="approve">
+          <input name="admin_note" class="mini-input" placeholder="What was verified" maxlength="200">
+          <input name="expires_at" class="mini-input" type="date" title="Re-verify after this date (optional)">
+          <button class="btn-mini btn-mini-g">Approve</button>
+        </form>
+        <form method="post" action="/admin/verification/${v.id}/decision" class="adm-decision">
+          <input type="hidden" name="decision" value="request_docs">
+          <input name="admin_note" class="mini-input" placeholder="What extra evidence is needed" required maxlength="200">
+          <button class="btn-mini">Request more evidence</button>
+        </form>
+        <form method="post" action="/admin/verification/${v.id}/decision" class="adm-decision">
+          <input type="hidden" name="decision" value="reject">
+          <input name="admin_note" class="mini-input" placeholder="Rejection reason" required maxlength="200">
+          <button class="btn-mini">Reject</button>
+        </form>
+      </div>
+    </div>`).join('');
+  const done = decided.map(v => `
+    <tr>
+      <td><a href="/admin/business/${v.business_id}">${esc(v.biz_name)}</a></td>
+      <td>${statusChip(v.status)}</td>
+      <td class="muted small">${esc((v.admin_note || '').slice(0, 60))}</td>
+      <td class="muted small">${esc((v.decided_at || '').slice(0, 10))}</td>
+      <td class="muted small">${v.expires_at ? esc(v.expires_at) : '—'}</td>
+    </tr>`).join('');
+  const claimRows = (claims || []).map(c => `
+    <div class="card row-card col">
+      <div class="rev-me-top"><b><a href="/admin/business/${c.business_id}">${esc(c.biz_name)}</a></b>
+        <span class="muted small">claimed by ${esc(c.user_name)} (${esc(c.contact || 'no contact')}) · ${esc(c.created_at.slice(0, 10))}</span></div>
+      <p class="small">${esc(c.details)}</p>
+      <div class="adm-actions">
+        <form method="post" action="/admin/claim/${c.id}"><input type="hidden" name="decision" value="approve"><button class="btn-mini btn-mini-g">Approve claim</button></form>
+        <form method="post" action="/admin/claim/${c.id}"><input type="hidden" name="decision" value="reject"><button class="btn-mini">Reject</button></form>
+      </div>
+    </div>`).join('');
+  return admPage(user, 'verifications', 'Verification centre', `
+  ${(claims || []).length ? `<div class="card adm-block"><h3>Business claims (${claims.length})</h3>${claimRows}</div>` : ''}
+  <div class="card adm-block"><h3>Pending (${pending.length})</h3>${pend || '<p class="muted">Queue is clear.</p>'}</div>
+  <h3>Decision history</h3>
+  ${decided.length ? `<table class="adm-table"><thead><tr><th>Business</th><th>Outcome</th><th>Note</th><th>Decided</th><th>Re-verify by</th></tr></thead><tbody>${done}</tbody></table>`
+    : '<div class="empty"><p class="muted">No decisions yet.</p></div>'}`, msg);
+}
+
+function adminModeration({ user, reports, hiddenReviews, appeals, msg }) {
+  const reps = reports.map(r => `
+    <div class="card row-card col">
+      <div class="rev-me-top"><b><a href="/business/${esc(r.biz_slug || '')}">${esc(r.biz_name || 'Unknown')}</a></b>
+        <span class="muted small">reported by ${esc(r.reporter_name || 'guest')} · ${esc(r.created_at.slice(0, 10))}</span></div>
+      <p class="small">${esc(r.details)}</p>
+      <div class="adm-actions">
+        <form method="post" action="/admin/review/${r.review_id}/hide" class="adm-decision">
+          <input name="reason" class="mini-input" placeholder="Why it violates policy" required maxlength="200">
+          <button class="btn-mini">Hide review</button>
+        </form>
+        <form method="post" action="/admin/report/${r.id}/dismiss" class="inline"><button class="btn-mini btn-mini-g">Dismiss report</button></form>
+      </div>
+    </div>`).join('');
+  const hid = hiddenReviews.map(r => `
+    <div class="card row-card col">
+      <div class="rev-me-top"><b><a href="/business/${esc(r.biz_slug)}">${esc(r.biz_name)}</a></b>
+        <span class="muted small">hidden ${esc((r.hidden_at || '').slice(0, 10))}</span></div>
+      <p class="small">${esc((r.title ? r.title + ' — ' : '') + (r.body || '').slice(0, 120))}</p>
+      <p class="small muted">Reason: ${esc(r.hidden_reason || '—')}</p>
+      <form method="post" action="/admin/review/${r.id}/restore">${confirmBox('confirm', 'I reviewed it — restore publicly')}<button class="btn-mini btn-mini-g">Restore</button></form>
+    </div>`).join('');
+  const aps = appeals.map(a => `
+    <div class="card row-card col">
+      <div class="rev-me-top"><b>${esc(a.user_name)}</b> appeals a hidden review on <a href="/business/${esc(a.biz_slug)}">${esc(a.biz_name)}</a>
+        <span class="muted small">${esc(a.created_at.slice(0, 10))}</span></div>
+      <p class="small muted">Review: ${esc((a.review_body || '').slice(0, 120))}</p>
+      <p class="small">Appeal: ${esc(a.reason)}</p>
+      <div class="adm-actions">
+        <form method="post" action="/admin/appeal/${a.id}/accept">${confirmBox('confirm', 'Appeal is valid — unhide the review')}<button class="btn-mini btn-mini-g">Uphold appeal</button></form>
+        <form method="post" action="/admin/appeal/${a.id}/reject" class="adm-decision"><input name="note" class="mini-input" placeholder="Reason to reviewer" required maxlength="200"><button class="btn-mini">Reject appeal</button></form>
+      </div>
+    </div>`).join('');
+  return admPage(user, 'moderation', 'Reviews & moderation', `
+  <h3>Reported reviews (${reports.length})</h3>
+  ${reports.length ? reps : '<div class="empty"><p class="muted">No review reports.</p></div>'}
+  <h3>Appeals (${appeals.length})</h3>
+  ${appeals.length ? aps : '<div class="empty"><p class="muted">No open appeals.</p></div>'}
+  <h3>Hidden reviews (${hiddenReviews.length})</h3>
+  ${hiddenReviews.length ? hid : '<div class="empty"><p class="muted">Nothing hidden.</p></div>'}
+  <p class="tiny muted">Policy: businesses can never pay to remove a negative review or improve their rating. Every hide/restore is audited, and reviewers can appeal from their account page.</p>`, msg);
+}
+
+function adminReports({ user, reports, status, msg }) {
+  const filters = ['open', 'investigating', 'resolved', 'dismissed', 'all'].map(st =>
+    `<a class="chip ${st === status ? 'chip-on' : ''}" href="/admin/reports?status=${st}">${st}</a>`).join('');
+  const rows = reports.map(r => `
+    <tr class="${r.priority === 'urgent' ? 'row-urgent' : ''}">
+      <td><a href="/admin/report/${r.id}"><b>#${r.id} ${esc(r.type)}</b></a>${r.priority === 'urgent' ? ' <span class="p-chip">urgent</span>' : ''}</td>
+      <td>${r.biz_name ? `<a href="/business/${esc(r.biz_slug)}">${esc(r.biz_name)}</a>` : '—'}</td>
+      <td>${esc(r.reporter_name || 'guest')}</td>
+      <td>${statusChip(r.status)}</td>
+      <td class="muted small">${esc(r.created_at.slice(0, 10))}</td>
+    </tr>`).join('');
+  return admPage(user, 'reports', 'Scam reports & disputes', `
+  <div class="chips">${filters}</div>
+  ${reports.length ? `<table class="adm-table"><thead><tr><th>Case</th><th>Business</th><th>Reporter</th><th>Status</th><th>Opened</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<div class="empty"><p class="muted">No reports in this view.</p></div>'}`, msg);
+}
+
+function adminReportCase({ user, report, related, msg }) {
+  const rel = related.map(r => `
+    <li><a href="/admin/report/${r.id}">#${r.id}</a> ${esc(r.type)} · ${statusChip(r.status)}
+      <span class="muted small">${esc((r.details || '').slice(0, 100))}</span></li>`).join('');
+  return admPage(user, 'reports', 'Case #' + report.id, `
+  <div class="adm-cols">
+    <div class="card adm-block">
+      <h3>${esc(report.type)} report</h3>
+      <p class="small muted">Opened ${esc(report.created_at.slice(0, 10))} · status ${statusChip(report.status)} · priority ${report.priority === 'urgent' ? '<span class="p-chip">urgent</span>' : 'normal'}</p>
+      ${report.biz_name ? `<p>Business: <a href="/admin/business/${report.business_id}"><b>${esc(report.biz_name)}</b></a> (<a href="/business/${esc(report.biz_slug)}">public profile</a>)</p>` : ''}
+      ${report.review_id ? `<p>Review: <a href="/admin/moderation">#${report.review_id}</a></p>` : ''}
+      <p class="small muted">Reporter: ${esc(report.reporter_name || 'guest')}${report.reporter_contact ? ' · ' + esc(report.reporter_contact) : ''}</p>
+      <p class="small">${esc(report.details)}</p>
+      ${report.outcome ? `<p class="small"><b>Outcome:</b> ${esc(report.outcome)}</p>` : ''}
+    </div>
+    <div class="card adm-block">
+      <h3>Case actions</h3>
+      <form method="post" action="/admin/report/${report.id}/update" class="form">
+        <div class="f-row"><label>Priority</label>
+          <select name="priority"><option value="normal" ${report.priority !== 'urgent' ? 'selected' : ''}>Normal</option><option value="urgent" ${report.priority === 'urgent' ? 'selected' : ''}>Urgent</option></select>
+        </div>
+        <div class="f-row"><label>Status</label>
+          <select name="status"><option value="open" ${report.status === 'open' ? 'selected' : ''}>Open</option><option value="investigating" ${report.status === 'investigating' ? 'selected' : ''}>Investigating</option><option value="resolved" ${report.status === 'resolved' ? 'selected' : ''}>Resolved</option><option value="dismissed" ${report.status === 'dismissed' ? 'selected' : ''}>Dismissed</option></select>
+        </div>
+        <div class="f-row"><label>Investigation outcome (recorded)</label><textarea name="outcome" rows="3" maxlength="600">${esc(report.outcome || '')}</textarea></div>
+        <button class="btn-mini btn-mini-g" type="submit">Save case</button>
+      </form>
+    </div>
+  </div>
+  <h3>Linked complaints about the same business (${related.length})</h3>
+  ${rel ? `<ul class="act-list">${rel}</ul>` : '<p class="muted small">No other reports for this business.</p>'}`, msg);
+}
+
+function adminUsers({ user, users, qq, msg }) {
+  const rows = users.map(u => `
+    <tr>
+      <td><b>${esc(u.name)}</b><br><span class="muted small">${esc(u.email)}</span></td>
+      <td>${u.review_count}</td>
+      <td>${statusChip(u.status)}<br>${esc(u.role)}</td>
+      <td class="muted small">${esc(u.created_at.slice(0, 10))}</td>
+      <td>
+        ${u.id === user.id ? '<span class="muted small">you</span>' : `
+        <form method="post" action="/admin/user/${u.id}/update" class="adm-decision">
+          <select name="status"><option value="active" ${u.status === 'active' ? 'selected' : ''}>Active</option><option value="restricted" ${u.status === 'restricted' ? 'selected' : ''}>Restricted (no reviews)</option><option value="suspended" ${u.status === 'suspended' ? 'selected' : ''}>Suspended (no login)</option></select>
+          <select name="role"><option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option><option value="moderator" ${u.role === 'moderator' ? 'selected' : ''}>moderator</option><option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option></select>
+          <button class="btn-mini">Apply</button>
+        </form>`}
+      </td>
+    </tr>`).join('');
+  return admPage(user, 'users', 'User management', `
+  <form method="get" action="/admin/users" class="adm-search">
+    <input name="q" value="${esc(qq || '')}" placeholder="Search users…"><button class="btn-mini btn-mini-g">Search</button>
+  </form>
+  ${users.length ? `<table class="adm-table"><thead><tr><th>User</th><th>Reviews</th><th>Status</th><th>Joined</th><th>Manage</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<div class="empty"><p class="muted">No users found.</p></div>'}
+  <p class="tiny muted">Moderators can access moderation, reports and verification only. Only admins reach businesses, users, settings, analytics and the audit log. Permissions are enforced on the server.</p>`, msg);
+}
+
+function adminSettings({ user, categories, reviewMin, msg }) {
+  const cats = categories.map(c => `
+    <tr><td>${esc(c.name)}</td><td><form method="post" action="/admin/category/${c.id}/delete">${confirmBox('confirm', 'delete')}<button class="btn-mini">Delete</button></form></td></tr>`).join('');
+  return admPage(user, 'settings', 'Platform settings', `
+  <div class="adm-cols">
+    <div class="card adm-block">
+      <h3>Categories</h3>
+      <table class="adm-table"><tbody>${cats}</tbody></table>
+      <form method="post" action="/admin/category" class="adm-decision">
+        <input name="name" class="mini-input" placeholder="New category" required maxlength="60">
+        <button class="btn-mini btn-mini-g">Add</button>
+      </form>
+    </div>
+    <div class="card adm-block">
+      <h3>Review rules</h3>
+      <form method="post" action="/admin/setting/review_min" class="form">
+        <div class="f-row"><label>Minimum review length (characters)</label><input type="number" name="value" min="0" max="1000" value="${esc(reviewMin)}"></div>
+        <button class="btn-mini btn-mini-g" type="submit">Save rule</button>
+      </form>
+      <p class="tiny muted">Never allow businesses to pay to remove negative reviews or raise ratings — this is a fixed platform rule.</p>
+    </div>
+  </div>`, msg);
+}
+
+function adminAnalytics({ user, stats, daily, verTotals, msg }) {
+  const max = Math.max(1, ...daily.map(d => Math.max(d.signups, d.reviews, d.businesses)));
+  const bars = (field) => daily.map(d =>
+    `<div class="bar" title="${d.day}: ${d[field]}"><span style="height:${Math.round(d[field] / max * 100)}%"></span><i>${d[field]}</i></div>`).join('');
+  const conv = verTotals.total ? Math.round(verTotals.approved / verTotals.total * 100) : 0;
+  return admPage(user, 'analytics', 'Analytics & growth', `
+  <div class="stat-tiles">
+    <a class="stat-tile" href="/admin/users"><b>${stats.users}</b><span>Total users</span></a>
+    <a class="stat-tile" href="/admin/businesses"><b>${stats.businesses}</b><span>Active businesses</span></a>
+    <a class="stat-tile" href="/admin/moderation"><b>${stats.reviews}</b><span>Published reviews</span></a>
+    <a class="stat-tile" href="/admin/verifications"><b>${conv}%</b><span>Verification conversion</span></a>
+    <a class="stat-tile" href="/admin/reports"><b>${stats.openReports}</b><span>Open reports</span></a>
+  </div>
+  <div class="adm-cols">
+    <div class="card adm-block"><h3>New signups (14 days)</h3><div class="bar-chart">${bars('signups')}</div></div>
+    <div class="card adm-block"><h3>Reviews published (14 days)</h3><div class="bar-chart">${bars('reviews')}</div></div>
+  </div>
+  <p class="tiny muted">Search demand and premium plan tracking arrive with monetisation (roadmap P3).</p>`, msg);
+}
+
+function adminAudit({ user, entries, msg }) {
+  const rows = entries.map(a => `
+    <tr><td class="muted small">${esc(a.created_at.replace('T', ' ').slice(0, 19))}</td>
+    <td>${esc(a.actor_email)} <span class="muted small">(${esc(a.actor_role || '')})</span></td>
+    <td><b>${esc(a.action)}</b></td>
+    <td>${esc(a.entity_type)} #${a.entity_id || '—'}</td>
+    <td class="muted small">${esc((a.details || '').slice(0, 80))}</td></tr>`).join('');
+  return admPage(user, 'audit', 'Audit log', `
+  ${entries.length ? `<table class="adm-table"><thead><tr><th>When</th><th>Staff</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<div class="empty"><p class="muted">No staff actions recorded yet.</p></div>'}`, msg);
+}
+
+// ---------- PUBLIC: report a scam / review ----------
+function reportPage({ user, type, biz, reviewId, err }) {
+  const isReview = type === 'review' && reviewId;
+  return layout({ title: 'Report — The Legit Rank', user, content: `
+  <section class="page-head"><div class="wrap narrow">
+    <h1 class="sec">${isReview ? 'Report a review' : 'Report a scam or problem'}</h1>
+    <p class="sec-sub muted">${t('rep.sub')}</p>
+    ${err ? `<div class="form-err">${t('rep.err')}</div>` : ''}
+    <form method="post" action="/report" class="form auth-card">
+      <input type="hidden" name="type" value="${esc(type)}">
+      <input type="hidden" name="biz" value="${esc(biz || '')}">
+      <input type="hidden" name="review_id" value="${esc(reviewId || '')}">
+      ${biz ? `<div class="f-row"><label>${t('rep.biz')}</label><input value="${esc(biz)}" disabled></div>` : ''}
+      <div class="f-row"><label for="det">${t('rep.details')}</label><textarea id="det" name="details" rows="5" required maxlength="2000" placeholder="${esc(tRaw('rep.detailsPh'))}"></textarea></div>
+      <div class="f-row"><label for="ct">${t('rep.contact')}</label><input id="ct" name="contact" maxlength="120" placeholder="${esc(tRaw('rep.contactPh'))}"></div>
+      <button class="btn btn-green w100" type="submit">${t('rep.submit')} →</button>
+    </form>
+    <p class="tiny muted center" style="margin-top:14px">${t('rep.note')}</p>
   </div></section>` });
 }
 
@@ -638,4 +988,6 @@ function notFound({ user }) {
 }
 
 module.exports = { layout, home, searchPage, businessPage, reviewForm, loginPage, signupPage,
-  addBizPage, claimPage, dashboard, bizManagePage, verifyPage, adminPage, notFound, stars, bizCard };
+  addBizPage, claimPage, dashboard, bizManagePage, verifyPage, notFound, stars, bizCard,
+  adminOverview, adminBusinesses, adminBusinessDetail, adminVerifications, adminModeration,
+  adminReports, adminReportCase, adminUsers, adminSettings, adminAnalytics, adminAudit, reportPage };

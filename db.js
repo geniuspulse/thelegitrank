@@ -90,7 +90,55 @@ function init() {
       console.log('[db] admin account created:', adminEmail);
     }
   }
+  migrate();
   seed();
+}
+
+function migrate() {
+  const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map(c => c.name);
+  if (!cols('users').includes('status')) db.exec(`ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`);
+  const rc = cols('reviews');
+  if (!rc.includes('hidden_reason')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_reason TEXT DEFAULT ''`);
+  if (!rc.includes('hidden_by')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_by INTEGER`);
+  if (!rc.includes('hidden_at')) db.exec(`ALTER TABLE reviews ADD COLUMN hidden_at TEXT`);
+  const vc = cols('verifications');
+  if (!vc.includes('admin_note')) db.exec(`ALTER TABLE verifications ADD COLUMN admin_note TEXT DEFAULT ''`);
+  if (!vc.includes('expires_at')) db.exec(`ALTER TABLE verifications ADD COLUMN expires_at TEXT`);
+  db.exec(`
+  CREATE TABLE IF NOT EXISTS reports(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    business_id INTEGER, review_id INTEGER, target_user_id INTEGER,
+    reporter_user_id INTEGER, reporter_contact TEXT DEFAULT '',
+    details TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open',
+    priority TEXT NOT NULL DEFAULT 'normal',
+    outcome TEXT DEFAULT '',
+    created_at TEXT NOT NULL, updated_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS audit_log(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_id INTEGER, actor_email TEXT, actor_role TEXT,
+    action TEXT NOT NULL, entity_type TEXT DEFAULT '', entity_id INTEGER,
+    details TEXT DEFAULT '', created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS appeals(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL, review_id INTEGER NOT NULL,
+    reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+    decided_by INTEGER, decided_at TEXT, created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS categories(
+    id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
+  CREATE INDEX IF NOT EXISTS idx_reports_biz ON reports(business_id);
+  CREATE INDEX IF NOT EXISTS idx_audit ON audit_log(created_at);
+  `);
+  if (db.prepare('SELECT COUNT(*) AS n FROM categories').get().n === 0) {
+    ['Fashion','Electronics','Home & Living','Food & Restaurant','Beauty','Services','Education','Retail','Travel','Transport','Health','Other']
+      .forEach(c => db.prepare('INSERT OR IGNORE INTO categories (name, created_at) VALUES (?,?)').run(c, now()));
+  }
 }
 
 // ---- password hashing (scrypt) ----
@@ -231,9 +279,134 @@ function seed() {
   console.log('[db] seeded sample data');
 }
 
+// ---- admin control centre helpers ----
+function audit(actor, action, entityType, entityId, details) {
+  db.prepare(`INSERT INTO audit_log (actor_id, actor_email, actor_role, action, entity_type, entity_id, details, created_at)
+              VALUES (?,?,?,?,?,?,?,?)`)
+    .run(actor ? actor.id : null, actor ? actor.email : 'system', actor ? actor.role : '-', action, entityType || '', entityId || null, details || '', now());
+}
+function adminStats() {
+  const one = (sql) => db.prepare(sql).get().n;
+  return {
+    users: one(`SELECT COUNT(*) AS n FROM users`),
+    businesses: one(`SELECT COUNT(*) AS n FROM businesses WHERE status='active'`),
+    reviews: one(`SELECT COUNT(*) AS n FROM reviews WHERE hidden=0`),
+    hiddenReviews: one(`SELECT COUNT(*) AS n FROM reviews WHERE hidden=1`),
+    pendingVerifications: one(`SELECT COUNT(*) AS n FROM verifications WHERE status='pending'`),
+    docsRequested: one(`SELECT COUNT(*) AS n FROM verifications WHERE status='docs_requested'`),
+    openReports: one(`SELECT COUNT(*) AS n FROM reports WHERE status IN ('open','investigating')`),
+    urgentReports: one(`SELECT COUNT(*) AS n FROM reports WHERE priority='urgent' AND status IN ('open','investigating')`),
+    pendingClaims: one(`SELECT COUNT(*) AS n FROM claims WHERE status='pending'`),
+    suspendedUsers: one(`SELECT COUNT(*) AS n FROM users WHERE status != 'active'`),
+    pendingAppeals: one(`SELECT COUNT(*) AS n FROM appeals WHERE status='pending'`),
+  };
+}
+function recentActivity(limit) {
+  limit = limit || 15;
+  const rows = [];
+  db.prepare(`SELECT 'signup' AS kind, created_at, name AS label FROM users ORDER BY created_at DESC LIMIT ?`).all(limit).forEach(r => rows.push(r));
+  db.prepare(`SELECT 'review' AS kind, r.created_at, u.name AS label FROM reviews r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC LIMIT ?`).all(limit).forEach(r => rows.push(r));
+  db.prepare(`SELECT 'business' AS kind, created_at, name AS label FROM businesses ORDER BY created_at DESC LIMIT ?`).all(limit).forEach(r => rows.push(r));
+  db.prepare(`SELECT 'report' AS kind, created_at, type AS label FROM reports ORDER BY created_at DESC LIMIT ?`).all(limit).forEach(r => rows.push(r));
+  return rows.sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, limit);
+}
+function listUsers(search) {
+  let sql = `SELECT u.id, u.name, u.email, u.role, u.status, u.created_at,
+    (SELECT COUNT(*) FROM reviews r WHERE r.user_id = u.id) AS review_count
+    FROM users u`;
+  const p = [];
+  if (search) { sql += ` WHERE LOWER(u.name) LIKE ? OR LOWER(u.email) LIKE ?`; p.push('%' + search.toLowerCase() + '%', '%' + search.toLowerCase() + '%'); }
+  sql += ` ORDER BY u.created_at DESC LIMIT 100`;
+  return db.prepare(sql).all(...p);
+}
+function listReports(status) {
+  let sql = `SELECT rp.*, b.name AS biz_name, b.slug AS biz_slug, u.name AS reporter_name
+    FROM reports rp
+    LEFT JOIN businesses b ON b.id = rp.business_id
+    LEFT JOIN users u ON u.id = rp.reporter_user_id`;
+  const p = [];
+  if (status && status !== 'all') { sql += ` WHERE rp.status = ?`; p.push(status); }
+  sql += ` ORDER BY CASE rp.priority WHEN 'urgent' THEN 0 ELSE 1 END, rp.created_at DESC LIMIT 200`;
+  return db.prepare(sql).all(...p);
+}
+function getReport(id) {
+  return db.prepare(`SELECT rp.*, b.name AS biz_name, b.slug AS biz_slug, u.name AS reporter_name
+    FROM reports rp
+    LEFT JOIN businesses b ON b.id = rp.business_id
+    LEFT JOIN users u ON u.id = rp.reporter_user_id WHERE rp.id = ?`).get(id);
+}
+function reportsForBusiness(bid, exceptId) {
+  return db.prepare(`SELECT * FROM reports WHERE business_id = ? AND id != ? ORDER BY created_at DESC LIMIT 20`).all(bid, exceptId || 0);
+}
+function addReport(r) {
+  return Number(db.prepare(`INSERT INTO reports (type, business_id, review_id, target_user_id, reporter_user_id, reporter_contact, details, status, priority, created_at)
+    VALUES (?,?,?,?,?,?,?,'open',?,?)`)
+    .run(r.type, r.business_id || null, r.review_id || null, r.target_user_id || null, r.reporter_user_id || null,
+         r.reporter_contact || '', r.details, r.priority || 'normal', now()).lastInsertRowid);
+}
+function allAdminReviews() {
+  return db.prepare(`SELECT r.*, b.name AS biz_name, b.slug AS biz_slug, u.name AS author_name
+    FROM reviews r JOIN businesses b ON b.id = r.business_id JOIN users u ON u.id = r.user_id
+    ORDER BY r.hidden DESC, r.created_at DESC LIMIT 200`).all();
+}
+function reviewReports() {
+  return db.prepare(`SELECT rp.*, u.name AS reporter_name, b.name AS biz_name, b.slug AS biz_slug
+    FROM reports rp LEFT JOIN users u ON u.id = rp.reporter_user_id
+    LEFT JOIN businesses b ON b.id = rp.business_id
+    WHERE rp.type = 'review' ORDER BY rp.created_at DESC LIMIT 100`).all();
+}
+function listAppeals(status) {
+  return db.prepare(`SELECT a.*, u.name AS user_name, r.title AS review_title, r.body AS review_body, b.name AS biz_name, b.slug AS biz_slug
+    FROM appeals a JOIN users u ON u.id = a.user_id JOIN reviews r ON r.id = a.review_id
+    JOIN businesses b ON b.id = r.business_id
+    ${status ? 'WHERE a.status = ?' : ''} ORDER BY a.created_at DESC LIMIT 100`).all(...(status ? [status] : []));
+}
+function mergeBusinesses(fromId, intoId) {
+  const from = db.prepare('SELECT * FROM businesses WHERE id = ?').get(fromId);
+  const into = db.prepare('SELECT * FROM businesses WHERE id = ?').get(intoId);
+  if (!from || !into || fromId === intoId) return { ok: false, error: 'invalid' };
+  db.prepare(`DELETE FROM reviews WHERE business_id = ? AND user_id IN (SELECT user_id FROM reviews WHERE business_id = ?)`).run(fromId, intoId);
+  db.prepare('UPDATE reviews SET business_id = ? WHERE business_id = ?').run(intoId, fromId);
+  db.prepare('UPDATE claims SET business_id = ? WHERE business_id = ?').run(intoId, fromId);
+  db.prepare('UPDATE verifications SET business_id = ? WHERE business_id = ?').run(intoId, fromId);
+  db.prepare('UPDATE reports SET business_id = ? WHERE business_id = ?').run(intoId, fromId);
+  if (from.owner_user_id && !into.owner_user_id) db.prepare('UPDATE businesses SET owner_user_id = ? WHERE id = ?').run(from.owner_user_id, intoId);
+  db.prepare('DELETE FROM businesses WHERE id = ?').run(fromId);
+  return { ok: true, from: from.name, into: into.name };
+}
+function dailyCounts(days) {
+  const out = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const day = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    out.push({
+      day,
+      signups: db.prepare(`SELECT COUNT(*) AS n FROM users WHERE substr(created_at,1,10) = ?`).get(day).n,
+      reviews: db.prepare(`SELECT COUNT(*) AS n FROM reviews WHERE substr(created_at,1,10) = ?`).get(day).n,
+      businesses: db.prepare(`SELECT COUNT(*) AS n FROM businesses WHERE substr(created_at,1,10) = ?`).get(day).n,
+    });
+  }
+  return out;
+}
+function settingGet(key, fallback) {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  return row ? row.value : fallback;
+}
+function settingSet(key, value) {
+  db.prepare('INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
+}
+function listCategories() {
+  return db.prepare('SELECT * FROM categories ORDER BY name').all();
+}
+function myAppealFor(reviewId) {
+  return db.prepare(`SELECT * FROM appeals WHERE review_id = ? ORDER BY created_at DESC LIMIT 1`).get(reviewId);
+}
+
 module.exports = {
   db, init, now, hashPassword, verifyPassword, slugify, uniqueSlug,
   getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses,
   reviewsForBusiness, ratingDistribution, myReview, userReviews,
   ownedBusinesses, platformStats,
+  audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
+  addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,
+  settingGet, settingSet, listCategories, myAppealFor,
 };

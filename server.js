@@ -52,8 +52,15 @@ function tokenUid(token) {
 function currentUser(req) {
   const uid = tokenUid(parseCookies(req).lr_sess);
   if (!uid) return null;
-  return dbm.db.prepare('SELECT id, email, name, role, created_at FROM users WHERE id = ?').get(uid) || null;
+  return dbm.db.prepare('SELECT id, email, name, role, status, created_at FROM users WHERE id = ?').get(uid) || null;
 }
+
+const ADM_ALLOWED = {
+  overview: ['admin', 'moderator'], businesses: ['admin'], verifications: ['admin', 'moderator'],
+  moderation: ['admin', 'moderator'], reports: ['admin', 'moderator'], users: ['admin'],
+  settings: ['admin'], analytics: ['admin'], audit: ['admin'],
+};
+function admAllow(u, section) { return !!(u && ADM_ALLOWED[section] && ADM_ALLOWED[section].includes(u.role)); }
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -248,31 +255,104 @@ async function handle(req, res) {
         `SELECT business_id FROM verifications WHERE status='pending' AND user_id = ?`).all(user.id);
       const pendingV = {};
       pendingRows.forEach(r => { pendingV[r.business_id] = 1; });
+      const hidden = dbm.db.prepare(`SELECT r.*, b.name AS biz_name, b.slug AS biz_slug
+        FROM reviews r JOIN businesses b ON b.id = r.business_id
+        WHERE r.user_id = ? AND r.hidden = 1 ORDER BY r.hidden_at DESC`).all(user.id);
+      const appeals = {};
+      dbm.db.prepare('SELECT review_id, status FROM appeals WHERE user_id = ? ORDER BY created_at DESC').all(user.id)
+        .forEach(a => { if (!(a.review_id in appeals)) appeals[a.review_id] = a; });
       return html(res, 200, views.dashboard({
-        user, reviews: dbm.userReviews(user.id), owned, pendingV, msg: q.get('msg'),
+        user, reviews: dbm.userReviews(user.id), owned, pendingV, hidden, appeals, msg: q.get('msg'),
       }));
     }
 
-    if (pathname === '/admin') {
-      if (!user || user.role !== 'admin') return html(res, 404, views.notFound({ user }));
-      const tab = ['verifications', 'claims', 'businesses', 'reviews'].includes(q.get('tab')) ? q.get('tab') : 'verifications';
-      const vers = dbm.db.prepare(`
-        SELECT v.*, b.name AS biz_name, u.name AS user_name FROM verifications v
+    // ---------- ADMIN CONTROL CENTRE (GET) ----------
+    if (pathname === '/admin' || pathname === '/admin/overview') {
+      if (!admAllow(user, 'overview')) return html(res, 404, views.notFound({ user }));
+      return html(res, 200, views.adminOverview({ user, stats: dbm.adminStats(), activity: dbm.recentActivity(12), msg: q.get('msg') }));
+    }
+    if (pathname === '/admin/businesses') {
+      if (!admAllow(user, 'businesses')) return html(res, 404, views.notFound({ user }));
+      const like = '%' + String(q.get('q') || '').toLowerCase() + '%';
+      const bizs = q.get('q')
+        ? dbm.db.prepare(`SELECT b.*, (SELECT ROUND(AVG(r.rating),1) FROM reviews r WHERE r.business_id=b.id AND r.hidden=0) AS avg_rating,
+            (SELECT COUNT(*) FROM reviews r WHERE r.business_id=b.id AND r.hidden=0) AS review_count
+            FROM businesses b WHERE LOWER(b.name) LIKE ? OR LOWER(b.city) LIKE ? OR LOWER(b.category) LIKE ? ORDER BY b.created_at DESC LIMIT 100`)
+            .all(like, like, like)
+        : dbm.db.prepare(`SELECT b.*, (SELECT ROUND(AVG(r.rating),1) FROM reviews r WHERE r.business_id=b.id AND r.hidden=0) AS avg_rating,
+            (SELECT COUNT(*) FROM reviews r WHERE r.business_id=b.id AND r.hidden=0) AS review_count
+            FROM businesses b ORDER BY b.created_at DESC LIMIT 100`).all();
+      return html(res, 200, views.adminBusinesses({ user, businesses: bizs, qq: q.get('q'), msg: q.get('msg') }));
+    }
+    m = pathname.match(/^\/admin\/business\/(\d+)$/);
+    if (m) {
+      if (!admAllow(user, 'businesses')) return html(res, 404, views.notFound({ user }));
+      const b = dbm.getBusinessById(Number(m[1]));
+      if (!b) return html(res, 404, views.notFound({ user }));
+      const reviews = dbm.db.prepare(`SELECT r.*, u.name AS author_name FROM reviews r
+        JOIN users u ON u.id = r.user_id WHERE r.business_id = ? ORDER BY r.created_at DESC LIMIT 200`).all(b.id);
+      const others = dbm.db.prepare('SELECT id, name, city FROM businesses WHERE id != ? ORDER BY name LIMIT 100').all(b.id);
+      return html(res, 200, views.adminBusinessDetail({ user, b, reviews, others, msg: q.get('msg') }));
+    }
+    if (pathname === '/admin/verifications') {
+      if (!admAllow(user, 'verifications')) return html(res, 404, views.notFound({ user }));
+      const pending = dbm.db.prepare(`SELECT v.*, b.name AS biz_name, u.name AS user_name FROM verifications v
         JOIN businesses b ON b.id = v.business_id JOIN users u ON u.id = v.user_id
-        WHERE v.status = 'pending' ORDER BY v.created_at ASC LIMIT 100`).all();
-      const claims = dbm.db.prepare(`
-        SELECT c.*, b.name AS biz_name, u.name AS user_name FROM claims c
+        WHERE v.status IN ('pending','docs_requested') ORDER BY v.created_at ASC LIMIT 100`).all();
+      const decided = dbm.db.prepare(`SELECT v.*, b.name AS biz_name, u.name AS user_name FROM verifications v
+        JOIN businesses b ON b.id = v.business_id JOIN users u ON u.id = v.user_id
+        WHERE v.status IN ('approved','rejected') ORDER BY v.decided_at DESC LIMIT 100`).all();
+      const claims = dbm.db.prepare(`SELECT c.*, b.name AS biz_name, u.name AS user_name FROM claims c
         JOIN businesses b ON b.id = c.business_id JOIN users u ON u.id = c.user_id
         WHERE c.status = 'pending' ORDER BY c.created_at ASC LIMIT 100`).all();
-      const bizs = dbm.db.prepare(`
-        SELECT b.*, (SELECT ROUND(AVG(r.rating),1) FROM reviews r WHERE r.business_id=b.id AND r.hidden=0) AS avg_rating,
-        (SELECT COUNT(*) FROM reviews r WHERE r.business_id=b.id AND r.hidden=0) AS review_count
-        FROM businesses b ORDER BY b.created_at DESC LIMIT 100`).all();
-      const revs = dbm.db.prepare(`
-        SELECT r.*, b.name AS biz_name, b.slug AS biz_slug, u.name AS author_name
-        FROM reviews r JOIN businesses b ON b.id = r.business_id JOIN users u ON u.id = r.user_id
-        ORDER BY r.created_at DESC LIMIT 100`).all();
-      return html(res, 200, views.adminPage({ user, vers, claims, bizs, revs, tab, msg: q.get('msg') }));
+      return html(res, 200, views.adminVerifications({ user, pending, decided, claims, msg: q.get('msg') }));
+    }
+    if (pathname === '/admin/moderation') {
+      if (!admAllow(user, 'moderation')) return html(res, 404, views.notFound({ user }));
+      const hiddenReviews = dbm.db.prepare(`SELECT r.*, u.name AS author_name, b.name AS biz_name, b.slug AS biz_slug
+        FROM reviews r JOIN users u ON u.id = r.user_id JOIN businesses b ON b.id = r.business_id
+        WHERE r.hidden = 1 ORDER BY r.hidden_at DESC LIMIT 100`).all();
+      return html(res, 200, views.adminModeration({ user, reports: dbm.reviewReports(), hiddenReviews,
+        appeals: dbm.listAppeals('pending'), msg: q.get('msg') }));
+    }
+    if (pathname === '/admin/reports') {
+      if (!admAllow(user, 'reports')) return html(res, 404, views.notFound({ user }));
+      const status = ['open', 'investigating', 'resolved', 'dismissed', 'all'].includes(q.get('status')) ? q.get('status') : 'open';
+      return html(res, 200, views.adminReports({ user, reports: dbm.listReports(status), status, msg: q.get('msg') }));
+    }
+    m = pathname.match(/^\/admin\/report\/(\d+)$/);
+    if (m) {
+      if (!admAllow(user, 'reports')) return html(res, 404, views.notFound({ user }));
+      const report = dbm.getReport(Number(m[1]));
+      if (!report) return html(res, 404, views.notFound({ user }));
+      return html(res, 200, views.adminReportCase({ user, report, related: dbm.reportsForBusiness(report.business_id, report.id), msg: q.get('msg') }));
+    }
+    if (pathname === '/admin/users') {
+      if (!admAllow(user, 'users')) return html(res, 404, views.notFound({ user }));
+      return html(res, 200, views.adminUsers({ user, users: dbm.listUsers(q.get('q')), qq: q.get('q'), msg: q.get('msg') }));
+    }
+    if (pathname === '/admin/settings') {
+      if (!admAllow(user, 'settings')) return html(res, 404, views.notFound({ user }));
+      return html(res, 200, views.adminSettings({ user, categories: dbm.listCategories(), reviewMin: dbm.settingGet('review_min_length', 20), msg: q.get('msg') }));
+    }
+    if (pathname === '/admin/analytics') {
+      if (!admAllow(user, 'analytics')) return html(res, 404, views.notFound({ user }));
+      const verTotals = {
+        total: dbm.db.prepare('SELECT COUNT(*) AS n FROM verifications').get().n,
+        approved: dbm.db.prepare(`SELECT COUNT(*) AS n FROM verifications WHERE status='approved'`).get().n,
+      };
+      return html(res, 200, views.adminAnalytics({ user, stats: dbm.adminStats(), daily: dbm.dailyCounts(14), verTotals, msg: q.get('msg') }));
+    }
+    if (pathname === '/admin/audit') {
+      if (!admAllow(user, 'audit')) return html(res, 404, views.notFound({ user }));
+      const entries = dbm.db.prepare('SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 200').all();
+      return html(res, 200, views.adminAudit({ user, entries, msg: q.get('msg') }));
+    }
+
+    // ---------- PUBLIC: report form ----------
+    if (pathname === '/report') {
+      const type = ['scam', 'review', 'other'].includes(q.get('type')) ? q.get('type') : 'other';
+      return html(res, 200, views.reportPage({ user, type, biz: (q.get('biz') || '').slice(0, 60), reviewId: parseInt(q.get('review'), 10) || null, err: q.get('err') }));
     }
 
     return html(res, 404, views.notFound({ user }));
@@ -293,6 +373,9 @@ async function handle(req, res) {
       const row = dbm.db.prepare('SELECT * FROM users WHERE email = ?').get(email);
       if (!row || !dbm.verifyPassword(password, row.password_hash)) {
         return html(res, 401, views.loginPage({ next: body.next || '', err: 'bad' }));
+      }
+      if (row.status === 'suspended') {
+        return html(res, 403, views.loginPage({ next: body.next || '', err: 'suspended' }));
       }
       const cookie = `lr_sess=${encodeURIComponent(makeToken(row.id))}; Max-Age=${30 * 24 * 3600}; Path=/; HttpOnly; SameSite=Lax; Secure`;
       return redirect(res, (body.next && body.next.startsWith('/') && !body.next.startsWith('//')) ? body.next : '/dashboard', cookie);
@@ -318,6 +401,39 @@ async function handle(req, res) {
       return redirect(res, '/', 'lr_sess=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax; Secure');
     }
 
+    // ---- public: submit report / appeal ----
+    if (pathname === '/report') {
+      const type = ['scam', 'review', 'other'].includes(body.type) ? body.type : 'other';
+      const details = String(body.details || '').trim().slice(0, 2000);
+      if (!details || details.length < 10) return redirect(res, '/report?err=1&type=' + type);
+      const slug = String(body.biz || '').slice(0, 60);
+      const biz = slug ? dbm.getBusinessBySlug(slug) : null;
+      const reviewId = parseInt(body.review_id, 10) || null;
+      const rid = dbm.addReport({
+        type, business_id: biz ? biz.id : null, review_id: type === 'review' ? reviewId : null,
+        reporter_user_id: user ? user.id : null,
+        reporter_contact: String(body.contact || '').slice(0, 120),
+        details,
+      });
+      dbm.audit(user, 'report.submitted', 'report', rid, type + (biz ? ' on ' + biz.name : ''));
+      return redirect(res, '/?msg=rep.done');
+    }
+    const apm = pathname.match(/^\/appeal\/(\d+)$/);
+    if (apm) {
+      const m = apm;
+      const rev = dbm.db.prepare('SELECT * FROM reviews WHERE id = ?').get(Number(m[1]));
+      if (!rev || !user || rev.user_id !== user.id) return redirect(res, '/dashboard');
+      if (!rev.hidden) return redirect(res, '/dashboard');
+      if (dbm.myAppealFor(rev.id)) return redirect(res, '/dashboard');
+      const reason = String(body.reason || '').trim().slice(0, 500);
+      if (reason.length < 10) return redirect(res, '/dashboard');
+      dbm.db.prepare('INSERT INTO appeals (user_id, review_id, reason, status, created_at) VALUES (?,?,?,\'pending\',?)')
+        .run(user.id, rev.id, reason, nowIso());
+      dbm.audit(user, 'appeal.submitted', 'appeal', rev.id, 'review #' + rev.id);
+      return redirect(res, '/dashboard');
+    }
+
+
     if (!user) return redirect(res, '/login');
 
     if (pathname === '/settings/profile') {
@@ -339,10 +455,12 @@ async function handle(req, res) {
     if (m) {
       const b = dbm.getBusinessBySlug(m[1]);
       if (!b) return html(res, 404, views.notFound({ user }));
+      if (user.status && user.status !== 'active') return redirect(res, '/dashboard?msg=restricted');
       const rating = Math.min(5, Math.max(1, parseInt(body.rating, 10) || 0));
       const title = String(body.title || '').trim().slice(0, 100);
       const text = String(body.body || '').trim().slice(0, 2000);
-      if (!rating || !text) return redirect(res, `/business/${m[1]}/review`);
+      const minLen = parseInt(dbm.settingGet('review_min_length', 20), 10) || 20;
+      if (!rating || text.length < minLen) return redirect(res, `/business/${m[1]}/review`);
       const existing = dbm.myReview(b.id, user.id);
       if (existing) {
         dbm.db.prepare('UPDATE reviews SET rating=?, title=?, body=? WHERE id = ?')
@@ -424,49 +542,185 @@ async function handle(req, res) {
     }
 
     // ---- admin actions ----
-    if (user.role === 'admin') {
-      m = pathname.match(/^\/admin\/verification\/(\d+)$/);
+    if (user && (user.role === 'admin' || user.role === 'moderator')) {
+      // verification decisions
+      m = pathname.match(/^\/admin\/verification\/(\d+)\/decision$/);
       if (m) {
+        if (!admAllow(user, 'verifications')) return html(res, 404, views.notFound({ user }));
         const v = dbm.db.prepare('SELECT * FROM verifications WHERE id = ?').get(Number(m[1]));
         if (v) {
-          if (body.decision === 'approve') {
-            dbm.db.prepare(`UPDATE verifications SET status='approved', decided_at=? WHERE id=?`).run(nowIso(), v.id);
-            dbm.db.prepare(`UPDATE businesses SET verified=1, verified_at=? WHERE id=?`).run(nowIso(), v.business_id);
+          const note = String(body.admin_note || '').slice(0, 200);
+          const dec = body.decision;
+          if (dec === 'approve') {
+            dbm.db.prepare(`UPDATE verifications SET status='approved', decided_at=?, admin_note=?, expires_at=? WHERE id=?`)
+              .run(nowIso(), note, body.expires_at ? String(body.expires_at).slice(0, 10) : null, v.id);
+            dbm.db.prepare('UPDATE businesses SET verified=1, verified_at=? WHERE id=?').run(nowIso(), v.business_id);
+            dbm.audit(user, 'verification.approved', 'business', v.business_id, note);
+          } else if (dec === 'request_docs') {
+            dbm.db.prepare(`UPDATE verifications SET status='docs_requested', admin_note=? WHERE id=?`).run(note, v.id);
+            dbm.audit(user, 'verification.docs_requested', 'business', v.business_id, note);
           } else {
-            dbm.db.prepare(`UPDATE verifications SET status='rejected', decided_at=? WHERE id=?`).run(nowIso(), v.id);
+            dbm.db.prepare(`UPDATE verifications SET status='rejected', decided_at=?, admin_note=? WHERE id=?`).run(nowIso(), note, v.id);
+            dbm.audit(user, 'verification.rejected', 'business', v.business_id, note);
           }
         }
-        return redirect(res, '/admin?tab=verifications&msg=' + (body.decision === 'approve' ? 'approved' : 'rejected'));
+        return redirect(res, '/admin/verifications?msg=Done');
       }
+      // claim decisions (audit added)
       m = pathname.match(/^\/admin\/claim\/(\d+)$/);
       if (m) {
+        if (!admAllow(user, 'businesses')) return html(res, 404, views.notFound({ user }));
         const c = dbm.db.prepare('SELECT * FROM claims WHERE id = ?').get(Number(m[1]));
         if (c) {
           if (body.decision === 'approve') {
             dbm.db.prepare(`UPDATE claims SET status='approved' WHERE id=?`).run(c.id);
             dbm.db.prepare(`UPDATE businesses SET owner_user_id=? WHERE id=?`).run(c.user_id, c.business_id);
             dbm.db.prepare(`UPDATE users SET role='owner' WHERE id=? AND role='user'`).run(c.user_id);
+            dbm.audit(user, 'claim.approved', 'business', c.business_id, 'to user #' + c.user_id);
           } else {
             dbm.db.prepare(`UPDATE claims SET status='rejected' WHERE id=?`).run(c.id);
+            dbm.audit(user, 'claim.rejected', 'business', c.business_id, '');
           }
         }
-        return redirect(res, '/admin?tab=claims&msg=' + (body.decision === 'approve' ? 'approved' : 'rejected'));
+        return redirect(res, '/admin/verifications?msg=Done');
       }
-      m = pathname.match(/^\/admin\/business\/(\d+)\/verify$/);
+      // business edit
+      m = pathname.match(/^\/admin\/business\/(\d+)\/edit$/);
       if (m) {
-        dbm.db.prepare(`UPDATE businesses SET verified=1, verified_at=? WHERE id=?`).run(nowIso(), Number(m[1]));
-        return redirect(res, '/admin?tab=businesses&msg=approved');
+        if (!admAllow(user, 'businesses')) return html(res, 404, views.notFound({ user }));
+        const name = String(body.name || '').trim().slice(0, 120);
+        if (!name) return redirect(res, '/admin/business/' + m[1] + '?msg=Name+required');
+        dbm.db.prepare('UPDATE businesses SET name=?, category=?, city=?, country=?, description=?, website=?, phone=? WHERE id=?')
+          .run(name, String(body.category || '').slice(0, 60), String(body.city || '').slice(0, 80),
+               String(body.country || '').slice(0, 60), String(body.description || '').slice(0, 600),
+               String(body.website || '').slice(0, 200), String(body.phone || '').slice(0, 40), Number(m[1]));
+        dbm.audit(user, 'business.edited', 'business', Number(m[1]), name);
+        return redirect(res, '/admin/business/' + m[1] + '?msg=Saved');
       }
-      m = pathname.match(/^\/admin\/business\/(\d+)\/(remove|restore)$/);
+      // business suspend/restore
+      m = pathname.match(/^\/admin\/business\/(\d+)\/status$/);
       if (m) {
-        const status = m[2] === 'remove' ? 'removed' : 'active';
+        if (!admAllow(user, 'businesses')) return html(res, 404, views.notFound({ user }));
+        const status = ['active', 'suspended'].includes(body.status) ? body.status : 'active';
+        if (status === 'suspended' && body.confirm !== 'on') return redirect(res, '/admin/business/' + m[1] + '?msg=Confirmation+required');
         dbm.db.prepare('UPDATE businesses SET status=? WHERE id=?').run(status, Number(m[1]));
-        return redirect(res, '/admin?tab=businesses');
+        dbm.audit(user, 'business.' + status, 'business', Number(m[1]), '');
+        return redirect(res, '/admin/business/' + m[1] + '?msg=Saved');
       }
-      m = pathname.match(/^\/admin\/review\/(\d+)\/(hide|show)$/);
+      // merge duplicates
+      if (pathname === '/admin/businesses/merge') {
+        if (!admAllow(user, 'businesses')) return html(res, 404, views.notFound({ user }));
+        if (body.confirm !== 'on') return redirect(res, '/admin/businesses?msg=Confirmation+required');
+        const r = dbm.mergeBusinesses(Number(body.from), Number(body.into));
+        if (r.ok) {
+          dbm.audit(user, 'business.merged', 'business', Number(body.into), '"' + r.from + '" merged into "' + r.into + '"');
+          return redirect(res, '/admin/business/' + body.into + '?msg=Merged');
+        }
+        return redirect(res, '/admin/businesses?msg=Invalid+merge');
+      }
+      // review hide/restore with reason
+      m = pathname.match(/^\/admin\/review\/(\d+)\/(hide|restore)$/);
       if (m) {
-        dbm.db.prepare('UPDATE reviews SET hidden=? WHERE id=?').run(m[2] === 'hide' ? 1 : 0, Number(m[1]));
-        return redirect(res, '/admin?tab=reviews');
+        if (!admAllow(user, 'moderation')) return html(res, 404, views.notFound({ user }));
+        const rev = dbm.db.prepare('SELECT * FROM reviews WHERE id = ?').get(Number(m[1]));
+        if (rev) {
+          if (m[2] === 'hide') {
+            const reason = String(body.reason || '').slice(0, 200);
+            if (!reason) return redirect(res, '/admin/moderation?msg=Reason+required');
+            dbm.db.prepare('UPDATE reviews SET hidden=1, hidden_reason=?, hidden_by=?, hidden_at=? WHERE id=?')
+              .run(reason, user.id, nowIso(), rev.id);
+            dbm.db.prepare(`UPDATE reports SET status='resolved', outcome='Review hidden by moderation', updated_at=? WHERE review_id=? AND status IN ('open','investigating')`).run(nowIso(), rev.id);
+            dbm.audit(user, 'review.hidden', 'review', rev.id, reason);
+          } else {
+            if (body.confirm !== 'on') return redirect(res, '/admin/moderation?msg=Confirmation+required');
+            dbm.db.prepare('UPDATE reviews SET hidden=0, hidden_reason=NULL, hidden_by=NULL, hidden_at=NULL WHERE id=?').run(rev.id);
+            dbm.audit(user, 'review.restored', 'review', rev.id, '');
+          }
+        }
+        return redirect(res, '/admin/moderation?msg=Done');
+      }
+      // dismiss a report
+      m = pathname.match(/^\/admin\/report\/(\d+)\/dismiss$/);
+      if (m) {
+        if (!admAllow(user, 'moderation')) return html(res, 404, views.notFound({ user }));
+        dbm.db.prepare(`UPDATE reports SET status='dismissed', outcome='No policy violation found', updated_at=? WHERE id=?`).run(nowIso(), Number(m[1]));
+        dbm.audit(user, 'report.dismissed', 'report', Number(m[1]), '');
+        return redirect(res, '/admin/moderation?msg=Done');
+      }
+      // update scam report case
+      m = pathname.match(/^\/admin\/report\/(\d+)\/update$/);
+      if (m) {
+        if (!admAllow(user, 'reports')) return html(res, 404, views.notFound({ user }));
+        const status = ['open', 'investigating', 'resolved', 'dismissed'].includes(body.status) ? body.status : 'open';
+        const priority = body.priority === 'urgent' ? 'urgent' : 'normal';
+        dbm.db.prepare('UPDATE reports SET status=?, priority=?, outcome=?, updated_at=? WHERE id=?')
+          .run(status, priority, String(body.outcome || '').slice(0, 600), nowIso(), Number(m[1]));
+        dbm.audit(user, 'report.' + status, 'report', Number(m[1]), 'priority ' + priority);
+        return redirect(res, '/admin/report/' + m[1] + '?msg=Saved');
+      }
+      // user status/role
+      m = pathname.match(/^\/admin\/user\/(\d+)\/update$/);
+      if (m) {
+        if (!admAllow(user, 'users')) return html(res, 404, views.notFound({ user }));
+        const uid = Number(m[1]);
+        if (uid === user.id) return redirect(res, '/admin/users?msg=Cannot+change+yourself');
+        const status = ['active', 'restricted', 'suspended'].includes(body.status) ? body.status : 'active';
+        const role = ['user', 'moderator', 'admin'].includes(body.role) ? body.role : 'user';
+        const target = dbm.db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
+        if (!target) return redirect(res, '/admin/users?msg=Not+found');
+        if (target.role === 'admin' && role !== 'admin' && dbm.db.prepare(`SELECT COUNT(*) AS n FROM users WHERE role='admin'`).get().n <= 1)
+          return redirect(res, '/admin/users?msg=Last+admin+cannot+be+demoted');
+        dbm.db.prepare('UPDATE users SET status=?, role=? WHERE id=?').run(status, role, uid);
+        dbm.audit(user, 'user.updated', 'user', uid, 'status ' + status + ', role ' + role);
+        return redirect(res, '/admin/users?msg=Saved');
+      }
+      // categories
+      if (pathname === '/admin/category') {
+        if (!admAllow(user, 'settings')) return html(res, 404, views.notFound({ user }));
+        const name = String(body.name || '').trim().slice(0, 60);
+        if (name) {
+          dbm.db.prepare(`INSERT OR IGNORE INTO categories (name, created_at) VALUES (?,?)`).run(name, nowIso());
+          dbm.audit(user, 'category.added', 'category', 0, name);
+        }
+        return redirect(res, '/admin/settings?msg=Saved');
+      }
+      m = pathname.match(/^\/admin\/category\/(\d+)\/delete$/);
+      if (m) {
+        if (!admAllow(user, 'settings')) return html(res, 404, views.notFound({ user }));
+        if (body.confirm !== 'on') return redirect(res, '/admin/settings?msg=Confirmation+required');
+        const cat = dbm.db.prepare('SELECT * FROM categories WHERE id = ?').get(Number(m[1]));
+        if (cat) {
+          dbm.db.prepare('DELETE FROM categories WHERE id=?').run(cat.id);
+          dbm.audit(user, 'category.deleted', 'category', cat.id, cat.name);
+        }
+        return redirect(res, '/admin/settings?msg=Saved');
+      }
+      if (pathname === '/admin/setting/review_min') {
+        if (!admAllow(user, 'settings')) return html(res, 404, views.notFound({ user }));
+        const v = Math.min(1000, Math.max(0, parseInt(body.value, 10) || 0));
+        dbm.settingSet('review_min_length', String(v));
+        dbm.audit(user, 'setting.review_min', 'setting', 0, String(v));
+        return redirect(res, '/admin/settings?msg=Saved');
+      }
+      // appeals
+      m = pathname.match(/^\/admin\/appeal\/(\d+)\/(accept|reject)$/);
+      if (m) {
+        if (!admAllow(user, 'moderation')) return html(res, 404, views.notFound({ user }));
+        const ap = dbm.db.prepare('SELECT * FROM appeals WHERE id = ?').get(Number(m[1]));
+        if (ap) {
+          if (m[2] === 'accept') {
+            if (body.confirm !== 'on') return redirect(res, '/admin/moderation?msg=Confirmation+required');
+            dbm.db.prepare('UPDATE reviews SET hidden=0, hidden_reason=NULL, hidden_at=NULL WHERE id=?').run(ap.review_id);
+            dbm.db.prepare(`UPDATE appeals SET status='accepted', decided_by=?, decided_at=? WHERE id=?`).run(user.id, nowIso(), ap.id);
+            dbm.audit(user, 'appeal.accepted', 'review', ap.review_id, 'review restored');
+          } else {
+            const note = String(body.note || '').slice(0, 200);
+            if (!note) return redirect(res, '/admin/moderation?msg=Reason+required');
+            dbm.db.prepare(`UPDATE appeals SET status='rejected', decided_by=?, decided_at=? WHERE id=?`).run(user.id, nowIso(), ap.id);
+            dbm.audit(user, 'appeal.rejected', 'review', ap.review_id, note);
+          }
+        }
+        return redirect(res, '/admin/moderation?msg=Done');
       }
     }
   }
