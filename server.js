@@ -209,7 +209,7 @@ async function handle(req, res) {
   // ---------- public GET routes ----------
   if (method === 'GET') {
     if (pathname === '/') {
-      return html(res, 200, views.home({ user, stats: dbm.platformStats(), top: dbm.topBusinesses(6) }));
+      return html(res, 200, views.home({ user, stats: dbm.platformStats(), top: dbm.topBusinesses(6), msg: q.get('msg') }));
     }
 
     if (pathname === '/search') {

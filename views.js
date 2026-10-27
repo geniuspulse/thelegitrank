@@ -88,10 +88,10 @@ ${content}
 </html>`;
 }
 
+const FLASH_ERR = ['error', 'passWrong', 'nameMissing', 'revRate', 'restricted', 'ownBiz'];
 function flash(msg) {
   if (!msg) return '';
-  const m = { error: 'fl-err', nameMissing: 'fl-err', passWrong: 'fl-err', ok: 'fl-ok' }[msg];
-  if (!m) return '';
+  const m = FLASH_ERR.includes(msg) ? 'fl-err' : 'fl-ok';
   const text = {
     reviewPosted: tRaw('rev.posted'), reviewUpdated: tRaw('rev.updated'),
     reviewDeleted: tRaw('rev.deleted'), acctCreated: tRaw('auth.acctCreated'),
@@ -107,8 +107,9 @@ function flash(msg) {
 }
 
 // ---------- HOME ----------
-function home({ user, stats, top }) {
+function home({ user, stats, top, msg }) {
   return layout({ title: 'The Legit Rank — The truth before you buy', user, hero: true, content: `
+  ${flash(msg || '')}
   <header>
     <div class="wrap hero">
       <div>
@@ -247,6 +248,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
     : `<a class="claim-link" href="/claim/${esc(b.slug)}">${t('biz.claim')}</a> <a class="claim-link" href="/report?type=scam&biz=${esc(b.slug)}">${t('biz.report')}</a>`;
 
   return layout({ title: `${b.name} — Reviews — The Legit Rank`, user, content: `
+  ${flash(msg || '')}
   <section class="biz-hero">
     <div class="wrap">
       <div class="biz-hero-top">
