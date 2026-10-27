@@ -8,3 +8,5 @@
 2026-10-26 — Item 9: review rate limiting — max 5 posts/minute per user, plus existing one-review-per-business rule.
 
 2026-10-26 — Business profile pictures: logo/photo upload while adding a business, in the owner's new manage-page profile editor (name, category, location, contact, description), and in the admin edit form. Logos serve publicly via /logo/:id, appear on profile heroes and search cards, replacements delete the old file. Owner edits are permission-checked and audited.
+
+2026-10-27 — Item 10: owners cannot review their own business — blocked on both the review form and the POST route with a clear message; regular customers unaffected.

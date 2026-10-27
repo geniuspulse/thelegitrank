@@ -98,7 +98,7 @@ function flash(msg) {
     bizAdded: tRaw('add.added'), claimSent: tRaw('claim.sent'),
     verSent: tRaw('ver.sent'), respPosted: tRaw('resp.posted'),
     approved: tRaw('adm.approved'), rejected: tRaw('adm.rejected'),
-    'rep.done': tRaw('rep.done'), restricted: tRaw('rev.restricted'), revRate: tRaw('rev.rate'),
+    'rep.done': tRaw('rep.done'), restricted: tRaw('rev.restricted'), revRate: tRaw('rev.rate'), ownBiz: tRaw('msg.ownBiz'),
     nameUpdated: tRaw('dash.nameUpdated'), nameMissing: tRaw('dash.nameMissing'),
     passUpdated: tRaw('dash.passUpdated'), passWrong: tRaw('dash.passWrong'),
   }[msg];

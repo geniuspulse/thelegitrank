@@ -239,6 +239,7 @@ const DICT = {
   'mg.logo': ['Update business logo or photo', 'Sintheni chithunzi cha bizinesi'],
   'mg.current': ['Current', 'Lilipo tsopano'],
   'mg.save': ['Save profile', 'Sungani profaile'],
+  'msg.ownBiz': ['Business owners cannot review their own business.', 'Ena a bizinesi sangolembe ndemanga pa bizinesi yawo.'],
 };
 
 function esc(s) {

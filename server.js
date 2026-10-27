@@ -239,6 +239,7 @@ async function handle(req, res) {
       const b = dbm.getBusinessBySlug(m[1]);
       if (!b) return html(res, 404, views.notFound({ user }));
       if (!user) return redirect(res, `/login?next=/business/${m[1]}/review`);
+      if (b.owner_user_id === user.id) return redirect(res, `/business/${m[1]}?msg=ownBiz`);
       const existing = dbm.myReview(b.id, user.id);
       const qRating = Math.min(5, Math.max(1, parseInt(q.get('rating'), 10) || 0));
       return html(res, 200, views.reviewForm({
@@ -560,6 +561,7 @@ async function handle(req, res) {
     if (m) {
       const b = dbm.getBusinessBySlug(m[1]);
       if (!b) return html(res, 404, views.notFound({ user }));
+      if (b.owner_user_id === user.id) return redirect(res, `/business/${m[1]}?msg=ownBiz`);
       if (user.status && user.status !== 'active') return redirect(res, '/dashboard?msg=restricted');
       if (rateLimited('rev:' + user.id, 5)) return redirect(res, '/dashboard?msg=revRate');
       const rating = Math.min(5, Math.max(1, parseInt(body.rating, 10) || 0));

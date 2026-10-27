@@ -12,7 +12,7 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 7. Review attachments (photos of product/delivery)
 - [x] 8. Moderation queue with auto-flagging (spam, profanity)
 - [x] 9. Rate limiting reviews per user per business
-- [ ] 10. Block owners reviewing their own business
+- [x] 10. Block owners reviewing their own business
 - [x] 11. Report/flag buttons on reviews and profiles
 - [x] 12. Admin analytics dashboard (signups, reviews, flags/day)
 - [ ] 13. Two-factor auth for admin accounts
