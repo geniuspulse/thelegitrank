@@ -237,6 +237,7 @@ function platformStats() {
 
 // ---- seed sample content (only if empty) ----
 function seed() {
+  return; // sample data disabled — production starts empty
   const count = db.prepare('SELECT COUNT(*) AS n FROM businesses').get().n;
   if (count > 0) return;
 
