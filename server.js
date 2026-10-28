@@ -279,6 +279,16 @@ async function handle(req, res) {
       return html(res, 200, views.verifyPage({ user, b, pending: !!pending }));
     }
 
+    m = pathname.match(/^\/review\/(\d+)\/delete$/);
+    if (m) {
+      const r = dbm.db.prepare(`SELECT r.*, b.slug AS biz_slug, b.name AS biz_name
+        FROM reviews r JOIN businesses b ON b.id = r.business_id WHERE r.id = ?`).get(Number(m[1]));
+      if (!r) return html(res, 404, views.notFound({ user }));
+      if (!user) return redirect(res, `/login?next=/review/${r.id}/delete`);
+      if (r.user_id !== user.id && user.role !== 'admin') return redirect(res, '/dashboard');
+      return html(res, 200, views.deleteReviewPage({ user, r }));
+    }
+
     m = pathname.match(/^\/business\/([a-z0-9-]+)\/manage$/);
     if (m) {
       const b = dbm.getBusinessBySlug(m[1]);
@@ -288,7 +298,10 @@ async function handle(req, res) {
       const reviews = dbm.db.prepare(`
         SELECT r.*, u.name AS author_name FROM reviews r JOIN users u ON u.id = r.user_id
         WHERE r.business_id = ? AND r.hidden = 0 ORDER BY r.created_at DESC`).all(b.id);
-      return html(res, 200, views.bizManagePage({ user, b, reviews }));
+      const verif = dbm.db.prepare(
+        `SELECT status, created_at, decided_at, admin_note, expires_at FROM verifications
+         WHERE business_id = ? ORDER BY created_at DESC LIMIT 1`).get(b.id) || null;
+      return html(res, 200, views.bizManagePage({ user, b, reviews, verif, msg: q.get('msg') }));
     }
 
     if (pathname === '/businesses/new') {
@@ -530,6 +543,19 @@ async function handle(req, res) {
 
   // ---------- POST routes ----------
   if (method === 'POST') {
+    // delete own review
+    const delM = pathname.match(/^\/review\/(\d+)\/delete$/);
+    if (delM) {
+      const r = dbm.db.prepare(`SELECT r.*, b.name AS biz_name FROM reviews r
+        JOIN businesses b ON b.id = r.business_id WHERE r.id = ?`).get(Number(delM[1]));
+      if (!r) return html(res, 404, views.notFound({ user }));
+      if (!user) return redirect(res, `/login?next=/review/${r.id}/delete`);
+      if (r.user_id !== user.id && user.role !== 'admin') return redirect(res, '/dashboard');
+      dbm.deleteReviewCascade(r.id);
+      dbm.audit(user, 'review.deleted', 'review', r.id, r.biz_name || '');
+      return redirect(res, '/dashboard?msg=reviewDeleted');
+    }
+
     let body;
     try { body = await readBody(req); } catch { return send(res, 413, 'Payload too large'); }
 
@@ -665,11 +691,18 @@ async function handle(req, res) {
     if (m) {
       const b = dbm.getBusinessBySlug(m[1]);
       if (!b) return html(res, 404, views.notFound({ user }));
-      if (b.owner_user_id !== user.id && user.role !== 'admin') return redirect(res, `/business/${m[1]}`);
+      if (!canEditBiz(user, b)) return redirect(res, `/business/${m[1]}`);
       const text = String(body.response || '').trim().slice(0, 1000);
+      if (String(body.remove || '') === '1') {
+        dbm.db.prepare('UPDATE reviews SET response_text=NULL, responded_at=NULL WHERE id=? AND business_id=?')
+          .run(Number(m[2]), b.id);
+        dbm.audit(user, 'review.response_removed', 'review', Number(m[2]), b.name);
+        return redirect(res, `/business/${m[1]}/manage?msg=respRemoved`);
+      }
       if (text) {
         dbm.db.prepare('UPDATE reviews SET response_text=?, responded_at=? WHERE id=? AND business_id=?')
           .run(text, nowIso(), Number(m[2]), b.id);
+        dbm.audit(user, 'review.response_saved', 'review', Number(m[2]), b.name);
       }
       return redirect(res, `/business/${m[1]}/manage?msg=respPosted`);
     }

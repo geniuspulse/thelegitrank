@@ -104,7 +104,7 @@ function flash(msg) {
     'rep.done': tRaw('rep.done'), restricted: tRaw('rev.restricted'), revRate: tRaw('rev.rate'), ownBiz: tRaw('msg.ownBiz'), deleted: 'Listing permanently deleted.',
     nameUpdated: tRaw('dash.nameUpdated'), nameMissing: tRaw('dash.nameMissing'),
     passUpdated: tRaw('dash.passUpdated'), passWrong: tRaw('dash.passWrong'),
-    noPerm: tRaw('msg.noPerm'),
+    noPerm: tRaw('msg.noPerm'), respRemoved: tRaw('mg.respRemoved'),
     profileSaved: tRaw('msg.profileSaved'),
   }[msg];
   if (!text) return '';
@@ -271,7 +271,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
           ? `<div class="biz-score"><span class="stars-a big">${stars(b.avg_rating)}</span> <b>${b.avg_rating}</b> · ${total} ${t('biz.reviews')}</div>`
           : `<div class="biz-score muted">${t('biz.noReviews')}</div>`}
         ${cta}
-        ${canEdit ? `<a class="btn-mini" href="/business/${esc(b.slug)}/manage">${t('biz.editDetails')}</a>` : ''}
+        ${canEdit ? `<a class="btn-mini" href="/business/${esc(b.slug)}/manage">${t('mg.manage')}</a>` : ''}
         ${ownerBar}
       </div>
       ${b.description ? `<p class="biz-desc">${esc(b.description)}</p>` : ''}
@@ -516,7 +516,10 @@ function dashboard({ user, reviews, owned, pendingV, hidden, appeals, msg }) {
       </div>
       ${r.title ? `<h4 class="rev-me-title">${esc(r.title)}</h4>` : ''}
       <p class="small muted">${esc((r.body || '').slice(0, 140))}</p>
-      <a class="btn-mini self-start" href="/business/${esc(r.biz_slug)}/review">${t('dash.edit')} →</a>
+      <div class="row-actions self-start">
+        <a class="btn-mini" href="/business/${esc(r.biz_slug)}/review">${t('dash.edit')} →</a>
+        <a class="btn-mini" href="/review/${r.id}/delete">${t('dash.delete')}</a>
+      </div>
     </div>`).join('');
 
   return layout({ title: 'My account — The Legit Rank', user, content: `
@@ -577,7 +580,18 @@ function dashboard({ user, reviews, owned, pendingV, hidden, appeals, msg }) {
 }
 
 // owner's business management: respond to reviews
-function bizManagePage({ user, b, reviews }) {
+function bizManagePage({ user, b, reviews, verif, msg }) {
+  const responded = reviews.filter(r => r.response_text).length;
+  const rate = reviews.length ? Math.round(responded / reviews.length * 100) : 0;
+  const statusChip = b.verified
+    ? `<span class="v-chip">✓ ${t('dash.verified')}</span>`
+    : verif && verif.status === 'pending'
+      ? `<span class="p-chip">${t('dash.pendingVerify')}</span>`
+      : verif && verif.status === 'docs_requested'
+        ? `<span class="p-chip">${t('mg.moreInfo')}</span>`
+        : `<span class="nv-chip">${t('biz.notVerified')}</span>`;
+  const ownerChip = b.owner_user_id ? '' : `<span class="p-chip">${t('dash.unclaimed')}</span>`;
+
   const items = reviews.map(r => `
     <div class="card row-card col">
       <div class="review-head">
@@ -588,8 +602,16 @@ function bizManagePage({ user, b, reviews }) {
       </div>
       ${r.title ? `<h4>${esc(r.title)}</h4>` : ''}
       <p>${esc(r.body)}</p>
+      ${r.hidden ? `<span class="p-chip">${t('dash.hiddenChip')}</span>` : ''}
       ${r.response_text
-        ? `<div class="resp-block"><b>↩ ${t('biz.response')}</b><p>${esc(r.response_text)}</p></div>`
+        ? `<div class="resp-block"><b>↩ ${t('biz.response')}</b><p>${esc(r.response_text)}</p></div>
+           <form method="post" action="/business/${esc(b.slug)}/respond/${r.id}" class="form resp-form">
+             <textarea name="response" rows="3" maxlength="1000" placeholder="${esc(tRaw('resp.title'))}…">${esc(r.response_text)}</textarea>
+             <div class="row-actions">
+               <button class="btn-mini btn-mini-g" type="submit">${t('mg.updateResponse')}</button>
+               <button class="btn-mini" type="submit" name="remove" value="1">${t('mg.removeResponse')}</button>
+             </div>
+           </form>`
         : `<form method="post" action="/business/${esc(b.slug)}/respond/${r.id}" class="form resp-form">
              <textarea name="response" rows="3" required maxlength="1000" placeholder="${esc(tRaw('resp.title'))}…"></textarea>
              <button class="btn-mini btn-mini-g" type="submit">${t('resp.submit')}</button>
@@ -601,7 +623,21 @@ function bizManagePage({ user, b, reviews }) {
   return layout({ title: `Manage ${b.name} — The Legit Rank`, user, content: `
   <section class="page-head"><div class="wrap">
     <h1 class="sec">${esc(b.name)}</h1>
-    <p class="sec-sub muted"><a href="/business/${esc(b.slug)}">${t('biz.reviews')} →</a></p>
+    <p class="sec-sub muted">${statusChip} ${ownerChip}</p>
+    <div class="mg-stats">
+      <div class="mg-stat"><b>${b.avg_rating || '—'}</b><span>${t('mg.avgRating')}</span></div>
+      <div class="mg-stat"><b>${reviews.length}</b><span>${t('mg.totalReviews')}</span></div>
+      <div class="mg-stat"><b>${rate}%</b><span>${t('mg.responseRate')}</span></div>
+      <div class="mg-stat"><b>${responded}</b><span>${t('mg.responded')}</span></div>
+    </div>
+    <div class="row-actions mg-actions">
+      <a class="btn-mini" href="/business/${esc(b.slug)}">${t('mg.viewPublic')} →</a>
+      ${!b.verified && !(verif && verif.status === 'pending')
+        ? `<a class="btn-mini btn-mini-g" href="/business/${esc(b.slug)}/verify">${t('dash.applyVerify')}</a>` : ''}
+      ${!b.owner_user_id ? `<a class="btn-mini btn-mini-g" href="/claim/${esc(b.slug)}">${t('dash.claim')}</a>` : ''}
+    </div>
+    ${flash(msg || '')}
+    <h2 class="dash-h">${t('mg.details')}</h2>
     <form class="form" method="post" action="/business/${esc(b.slug)}/profile" enctype="multipart/form-data">
       <div class="f2">
         <div class="f-row"><label for="pl">${t('mg.logo')}</label><input id="pl" name="logo" type="file" accept="image/png,image/jpeg,image/webp">
@@ -622,8 +658,33 @@ function bizManagePage({ user, b, reviews }) {
       <div class="f-row"><label for="pd2">${t('add.desc')}</label><textarea id="pd2" name="description" rows="3" maxlength="600">${esc(b.description || '')}</textarea></div>
       <button class="btn btn-green" type="submit">${t('mg.save')} →</button>
     </form>
-    <h2 class="dash-h">${t('biz.reviews')}</h2>
+    <h2 class="dash-h">${t('mg.reviewsHeading')}</h2>
+    <p class="small muted">${t('mg.reviewsHelp')}</p>
     ${reviews.length ? items : `<div class="empty"><p class="muted">${t('biz.noReviews')}</p></div>`}
+  </div></section>` });
+}
+
+// ---------- DELETE OWN REVIEW ----------
+function deleteReviewPage({ user, r }) {
+  return layout({ title: 'Delete review — The Legit Rank', user, content: `
+  <section class="pad"><div class="wrap narrow">
+    <h1 class="sec">${t('rev.deleteTitle')}</h1>
+    <div class="card row-card col">
+      <div class="rev-me-top">
+        <b><a href="/business/${esc(r.biz_slug)}">${esc(r.biz_name)}</a></b>
+        <span class="stars-a">${stars(r.rating)}</span>
+        <span class="muted small">${new Date(r.created_at).toLocaleDateString('en-GB')}</span>
+      </div>
+      ${r.title ? `<h4>${esc(r.title)}</h4>` : ''}
+      <p class="small muted">${esc((r.body || '').slice(0, 240))}</p>
+    </div>
+    <p class="small muted">${t('rev.deleteWarn')}</p>
+    <form method="post" action="/review/${r.id}/delete" class="form">
+      <div class="row-actions">
+        <button class="btn btn-red" type="submit">${t('rev.deleteYes')}</button>
+        <a class="btn-mini" href="/dashboard">${t('common.cancel')}</a>
+      </div>
+    </form>
   </div></section>` });
 }
 
@@ -1102,6 +1163,6 @@ function notFound({ user }) {
 }
 
 module.exports = { layout, home, searchPage, businessPage, reviewForm, loginPage, signupPage,
-  addBizPage, claimPage, dashboard, bizManagePage, verifyPage, notFound, stars, bizCard, termsPage, privacyPage, cookiesPage,
+  addBizPage, claimPage, dashboard, bizManagePage, verifyPage, deleteReviewPage, notFound, stars, bizCard, termsPage, privacyPage, cookiesPage,
   adminOverview, adminBusinesses, adminBusinessDetail, adminVerifications, adminModeration,
   adminReports, adminReportCase, adminUsers, adminSettings, adminAnalytics, adminAudit, reportPage };

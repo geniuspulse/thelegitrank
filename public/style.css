@@ -333,3 +333,11 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
 .auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--line)}
 .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:600;font-size:.95rem;text-decoration:none;transition:box-shadow .2s,border-color .2s}
 .btn-google:hover{border-color:#cbd5e1;box-shadow:0 6px 18px rgba(11,25,44,.08)}
+
+.btn-red{background:#dc2626;color:#fff;box-shadow:0 8px 24px rgba(220,38,38,.25)}
+.btn-red:hover{background:#b91c1c}
+.mg-stats{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0 6px}
+.mg-stat{background:var(--card,#fff);border:1px solid var(--line);border-radius:16px;padding:12px 20px;text-align:center;min-width:104px}
+.mg-stat b{display:block;font-family:'Plus Jakarta Sans',sans-serif;font-size:1.35rem;font-weight:800;color:var(--navy);line-height:1.2}
+.mg-stat span{color:#64748b;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em}
+.mg-actions{margin:14px 0 8px}

@@ -433,6 +433,19 @@ function bizLogoFile(bizId) {
   try { return { data: fs.readFileSync(path.join(DATA_DIR, r.logo_path)), mime: r.logo_path.endsWith('.png') ? 'image/png' : r.logo_path.endsWith('.webp') ? 'image/webp' : 'image/jpeg' }; }
   catch { return null; }
 }
+function deleteReviewCascade(reviewId) {
+  const r = db.prepare('SELECT id, photo_path, receipt_path FROM reviews WHERE id = ?').get(reviewId);
+  if (!r) return false;
+  for (const rel of [r.photo_path, r.receipt_path]) {
+    if (!rel) continue;
+    try { fs.unlinkSync(path.join(DATA_DIR, rel)); } catch { /* file already gone */ }
+  }
+  db.prepare('DELETE FROM appeals WHERE review_id = ?').run(reviewId);
+  db.prepare('DELETE FROM reports WHERE review_id = ?').run(reviewId);
+  db.prepare('DELETE FROM reviews WHERE id = ?').run(reviewId);
+  return true;
+}
+
 function savePhoto(reviewId, data, ext) {
   const dir = path.join(DATA_DIR, 'uploads');
   fs.mkdirSync(dir, { recursive: true });
@@ -493,5 +506,5 @@ module.exports = {
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
   addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,
   settingGet, settingSet, listCategories, myAppealFor, saveReceipt, receiptFile, findBusinessDuplicates,
-  savePhoto, photoFile, autoFlagReasons, saveBizLogo, bizLogoFile,
+  savePhoto, photoFile, autoFlagReasons, saveBizLogo, bizLogoFile, deleteReviewCascade,
 };
