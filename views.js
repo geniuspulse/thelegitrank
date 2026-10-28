@@ -401,7 +401,7 @@ function reviewForm({ user, b, existing }) {
           <h1>${t(existing ? 'rev.heroEdit' : 'rev.hero')} <span class="rv-hero-name">${esc(b.name)}</span></h1>
           <p class="rv-hero-meta">${esc(b.category)} · ${esc(b.city)}, ${esc(b.country)}</p>
           ${b.review_count
-            ? `<p class="rv-hero-score"><span class="stars-a">${stars(b.avg_rating)}</span> <b>${b.avg_rating}</b><span class="rv-of">/5</span> · ${b.review_count} ${t('rev.reviewsWord')}</p>`
+            ? `<p class="rv-hero-score"><span class="stars-a">${stars(b.avg_rating)}</span> <b>${b.avg_rating}</b><span class="rv-of">/5</span> · ${b.review_count} ${t(b.review_count === 1 ? 'rev.reviewOne' : 'rev.reviewsWord')}</p>`
             : `<p class="rv-hero-score muted">${t('rev.firstReview')}</p>`}
         </div>
       </div>

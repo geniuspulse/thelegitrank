@@ -86,6 +86,7 @@ const DICT = {
   'rev.hero': ['Review', 'Lemberani ndemanga za'],
   'rev.heroEdit': ['Update your review of', 'Sinthani ndemanga yanu ya'],
   'rev.reviewsWord': ['reviews', 'ndemanga'],
+  'rev.reviewOne': ['review', 'ndemanga'],
   'rev.firstReview': ['No reviews yet. Yours will be the first.', 'Palibe ndemanga. Yanu ikhale yoyambirira.'],
   'nav.byCategory': ['Browse by category', 'Yang\'anani m\'magulu'],
   'rev.title': ['Share your experience', 'Gawani zomwe mwazolowera'],
