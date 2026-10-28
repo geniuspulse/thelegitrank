@@ -240,6 +240,8 @@ const DICT = {
   'mg.current': ['Current', 'Lilipo tsopano'],
   'mg.save': ['Save profile', 'Sungani profaile'],
   'msg.ownBiz': ['Business owners cannot review their own business.', 'Ena a bizinesi sangolembe ndemanga pa bizinesi yawo.'],
+  'dash.claim': ['Claim this business', 'Dziwani bizinesi imeneyi'],
+  'dash.unclaimed': ['Added by you — claim to manage it', 'Munayikani njambazi — dziwani kuti muyendetse'],
 };
 
 function esc(s) {

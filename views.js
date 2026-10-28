@@ -473,11 +473,14 @@ function dashboard({ user, reviews, owned, pendingV, hidden, appeals, msg }) {
           ${b.verified ? `<span class="v-chip">✓ ${t('dash.verified')}</span>`
             : pv ? `<span class="p-chip">${t('dash.pendingVerify')}</span>`
             : `<span class="nv-chip">${t('biz.notVerified')}</span>`}
+          ${!b.owner_user_id ? `<span class="p-chip">${t('dash.unclaimed')}</span>` : ''}
         </p>
       </div>
       <div class="row-actions">
         ${!b.verified && !pv ? `<a class="btn-mini btn-mini-g" href="/business/${esc(b.slug)}/verify">${t('dash.applyVerify')}</a>` : ''}
-        <a class="btn-mini" href="/business/${esc(b.slug)}/manage">${t('dash.manage')}</a>
+        ${b.owner_user_id === user.id
+          ? `<a class="btn-mini" href="/business/${esc(b.slug)}/manage">${t('dash.manage')}</a>`
+          : `<a class="btn-mini btn-mini-g" href="/claim/${esc(b.slug)}">${t('dash.claim')}</a>`}
       </div>
     </div>`;
   }).join('');

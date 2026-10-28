@@ -225,7 +225,7 @@ function userReviews(uid) {
     WHERE r.user_id = ? AND b.status = 'active' ORDER BY r.created_at DESC`).all(uid);
 }
 function ownedBusinesses(uid) {
-  return db.prepare(`SELECT ${BIZ_AGG} FROM businesses b WHERE b.owner_user_id = ? AND b.status = 'active' ORDER BY b.created_at DESC`).all(uid);
+  return db.prepare(`SELECT ${BIZ_AGG} FROM businesses b WHERE (b.owner_user_id = ? OR b.created_by = ?) AND b.status = 'active' ORDER BY b.created_at DESC`).all(uid, uid);
 }
 function platformStats() {
   return {
