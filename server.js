@@ -238,7 +238,7 @@ async function handle(req, res) {
     if (m) {
       const b = dbm.getBusinessBySlug(m[1]);
       if (!b) return html(res, 404, views.notFound({ user }));
-      if (!user) return redirect(res, `/login?next=/business/${m[1]}/review`);
+      if (!user) return redirect(res, `/signup?next=${encodeURIComponent('/business/' + m[1] + '/review')}`);
       if (b.owner_user_id === user.id) return redirect(res, `/business/${m[1]}?msg=ownBiz`);
       const existing = dbm.myReview(b.id, user.id);
       const qRating = Math.min(5, Math.max(1, parseInt(q.get('rating'), 10) || 0));
@@ -317,7 +317,7 @@ async function handle(req, res) {
     }
     if (pathname === '/signup') {
       if (user) return redirect(res, '/dashboard');
-      return html(res, 200, views.signupPage({}));
+      return html(res, 200, views.signupPage({ next: q.get('next') || '' }));
     }
 
     if (pathname === '/dashboard') {
@@ -494,16 +494,18 @@ async function handle(req, res) {
       const name = String(body.name || '').trim().slice(0, 80);
       const email = String(body.email || '').trim().toLowerCase().slice(0, 120);
       const password = String(body.password || '');
+      const next = String(body.next || '');
+      const nx = next.startsWith('/') && !next.startsWith('//') ? next : '';
       if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
-        return html(res, 400, views.signupPage({ err: 'invalid', values: { name, email } }));
+        return html(res, 400, views.signupPage({ err: 'invalid', values: { name, email }, next }));
       }
       const exists = dbm.db.prepare('SELECT 1 FROM users WHERE email = ?').get(email);
-      if (exists) return html(res, 409, views.signupPage({ err: 'taken', values: { name, email } }));
+      if (exists) return html(res, 409, views.signupPage({ err: 'taken', values: { name, email }, next }));
       const r = dbm.db.prepare(
         'INSERT INTO users (email, name, password_hash, role, created_at) VALUES (?,?,?,?,?)')
         .run(email, name, dbm.hashPassword(password), 'user', nowIso());
       const cookie = `lr_sess=${encodeURIComponent(makeToken(Number(r.lastInsertRowid)))}; Max-Age=${30 * 24 * 3600}; Path=/; HttpOnly; SameSite=Lax; Secure`;
-      return redirect(res, '/dashboard?msg=acctCreated', cookie);
+      return redirect(res, nx || '/dashboard?msg=acctCreated', cookie);
     }
 
     if (pathname === '/logout') {

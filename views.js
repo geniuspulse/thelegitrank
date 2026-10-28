@@ -244,7 +244,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
     ? (alreadyReviewed
         ? `<a class="btn btn-green" href="/business/${esc(b.slug)}/review">${t('biz.editReview')} →</a>`
         : `<a class="btn btn-green" href="/business/${esc(b.slug)}/review">${t('biz.writeReview')} →</a>`)
-    : `<a class="btn btn-green" href="/login?next=/business/${esc(b.slug)}/review">${t('biz.loginToReview')} →</a>`;
+    : `<a class="btn btn-green" href="/signup?next=${encodeURIComponent('/business/' + b.slug + '/review')}">${t('biz.writeReview')} →</a>`;
 
   const ownerBar = b.owner_user_id
     ? ''
@@ -293,7 +293,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
           <button class="fstar" type="button" aria-label="4 stars">★</button>
           <button class="fstar" type="button" aria-label="5 stars">★</button>
         </div>
-        <a class="btn btn-green" href="${user ? `/business/${esc(b.slug)}/review` : `/login?next=${encodeURIComponent('/business/' + b.slug + '/review')}`}">${t('biz.writeReview')} →</a>
+        <a class="btn btn-green" href="${user ? `/business/${esc(b.slug)}/review` : `/signup?next=${encodeURIComponent('/business/' + b.slug + '/review')}`}">${t('biz.writeReview')} →</a>
       </div>
       <div class="fb-stat">
         ${total
@@ -370,13 +370,14 @@ function loginPage({ next, err }) {
         <div class="f-row"><label for="pw">${t('auth.password')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="pw" name="password" type="password" required autocomplete="current-password" placeholder="••••••••"></div></div>
         <button class="btn btn-green w100" type="submit">${t('auth.enter')} →</button>
       </form>
-      <p class="center muted small auth-alt"><a href="/signup">${t('auth.noAccount')}</a></p>
+      <p class="center muted small auth-alt"><a href="/signup${next ? `?next=${encodeURIComponent(next)}` : ''}">${t('auth.noAccount')}</a></p>
     </div>
   </section>` });
 }
 
-function signupPage({ err, values }) {
+function signupPage({ err, values, next }) {
   const v = values || {};
+  const nx = next && next.startsWith('/') && !next.startsWith('//') ? next : '';
   const errBox = err === 'taken' ? `<div class="form-err">${t('auth.emailTaken')}</div>` :
                  err ? '<div class="form-err">Please fill in all fields. Password must be at least 8 characters.</div>' : '';
   return layout({ title: 'Sign up — The Legit Rank', user: null, content: `
@@ -391,13 +392,14 @@ function signupPage({ err, values }) {
   <section class="auth-body">
     <div class="wrap narrow">
       <form class="form auth-card" method="post" action="/signup">
+        <input type="hidden" name="next" value="${esc(nx)}">
         ${errBox}
         <div class="f-row"><label for="nm">${t('auth.name')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg><input id="nm" name="name" required maxlength="80" value="${esc(v.name || '')}" placeholder="Your full name"></div></div>
         <div class="f-row"><label for="em">${t('auth.email')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m3 6 9 7 9-7"/></svg><input id="em" name="email" type="email" required maxlength="120" value="${esc(v.email || '')}" placeholder="you@example.com"></div></div>
         <div class="f-row"><label for="pw">${t('auth.password')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="pw" name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></div></div>
         <button class="btn btn-green w100" type="submit">${t('auth.create')} →</button>
       </form>
-      <p class="center muted small auth-alt"><a href="/login">${t('auth.haveAccount')}</a></p>
+      <p class="center muted small auth-alt"><a href="/login${nx ? `?next=${encodeURIComponent(nx)}` : ''}">${t('auth.haveAccount')}</a></p>
     </div>
   </section>` });
 }
