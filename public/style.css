@@ -327,3 +327,9 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
 .legal h2{font-size:1.02rem;margin:22px 0 6px;color:var(--ink)}
 .legal h1{margin-bottom:2px}
 .legal p{color:var(--muted);font-size:.92rem;line-height:1.55}
+
+/* google sign-in */
+.auth-or{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--muted);font-size:.82rem}
+.auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:600;font-size:.95rem;text-decoration:none;transition:box-shadow .2s,border-color .2s}
+.btn-google:hover{border-color:#cbd5e1;box-shadow:0 6px 18px rgba(11,25,44,.08)}

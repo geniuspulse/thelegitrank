@@ -9,6 +9,18 @@ const views = require('./views');
 const PORT = Number(process.env.PORT) || 80;
 const HOST = '0.0.0.0';
 const SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const googleOn = () => Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+function publicBase(req) {
+  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  const proto = /^(localhost|127\.)/.test(host) ? 'http' : 'https';
+  return `${proto}://${host}`;
+}
+function safeNext(n) {
+  const v = String(n || '');
+  return v.startsWith('/') && !v.startsWith('//') ? v : '';
+}
 if (!process.env.SESSION_SECRET) console.warn('[warn] SESSION_SECRET not set — sessions reset on restart');
 
 dbm.init();
@@ -311,13 +323,81 @@ async function handle(req, res) {
       return html(res, 200, views.claimPage({ user, b }));
     }
 
+    if (pathname === '/auth/google') {
+      if (user) return redirect(res, safeNext(q.get('next')) || '/dashboard');
+      if (!googleOn()) return redirect(res, '/login?msg=googleOff');
+      const state = crypto.randomBytes(18).toString('hex');
+      const next = safeNext(q.get('next'));
+      const params = new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        redirect_uri: publicBase(req) + '/auth/google/callback',
+        response_type: 'code',
+        scope: 'openid email profile',
+        state,
+        prompt: 'select_account',
+      });
+      return redirect(res, 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString(),
+        `lr_oauth=${state}.${encodeURIComponent(next)}; Max-Age=600; Path=/; HttpOnly; SameSite=Lax; Secure`);
+    }
+
+    if (pathname === '/auth/google/callback') {
+      const cookieHdr = req.headers.cookie || '';
+      const cm = cookieHdr.match(/(?:^|;\s*)lr_oauth=([^;]+)/);
+      const store = cm ? decodeURIComponent(cm[1]) : '';
+      const [savedState, savedNext] = store.split('.');
+      const next = safeNext(decodeURIComponent(savedNext || ''));
+      const clearCookie = 'lr_oauth=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax; Secure';
+      if (q.get('error') || !q.get('code') || !savedState || q.get('state') !== savedState) {
+        return redirect(res, '/login?msg=googleFail', clearCookie);
+      }
+      try {
+        const tokRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            code: q.get('code'),
+            client_id: GOOGLE_CLIENT_ID,
+            client_secret: GOOGLE_CLIENT_SECRET,
+            redirect_uri: publicBase(req) + '/auth/google/callback',
+            grant_type: 'authorization_code',
+          }).toString(),
+        });
+        const tok = await tokRes.json();
+        if (!tok.access_token) return redirect(res, '/login?msg=googleFail', clearCookie);
+        const ui = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+          headers: { Authorization: 'Bearer ' + tok.access_token },
+        }).then(r => r.json());
+        const email = String(ui.email || '').trim().toLowerCase();
+        if (!email || ui.email_verified === false) return redirect(res, '/login?msg=googleFail', clearCookie);
+        let row = dbm.db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+        let fresh = false;
+        if (row && row.status === 'suspended') return redirect(res, '/login?msg=googleSuspended', clearCookie);
+        if (!row) {
+          const name = String(ui.name || email.split('@')[0]).slice(0, 80);
+          const r = dbm.db.prepare(
+            'INSERT INTO users (email, name, password_hash, role, created_at) VALUES (?,?,?,?,?)')
+            .run(email, name, dbm.hashPassword(crypto.randomBytes(24).toString('hex')), 'user', nowIso());
+          row = dbm.db.prepare('SELECT * FROM users WHERE id = ?').get(Number(r.lastInsertRowid));
+          fresh = true;
+          dbm.audit(row, 'user.googleSignup', 'user', row.id, email);
+        } else {
+          dbm.audit(row, 'user.googleLogin', 'user', row.id, email);
+        }
+        const cookie = `lr_sess=${encodeURIComponent(makeToken(row.id))}; Max-Age=${30 * 24 * 3600}; Path=/; HttpOnly; SameSite=Lax; Secure`;
+        return redirect(res, next || (fresh ? '/dashboard?msg=acctCreated' : '/dashboard'), cookie);
+      } catch (e) {
+        console.error('[google]', e && e.message);
+        return redirect(res, '/login?msg=googleFail', clearCookie);
+      }
+    }
+
     if (pathname === '/login') {
       if (user) return redirect(res, '/dashboard');
-      return html(res, 200, views.loginPage({ next: q.get('next') || '' }));
+      return html(res, 200, views.loginPage({ next: q.get('next') || '', google: googleOn(), msg: q.get('msg') || '' }));
     }
     if (pathname === '/signup') {
       if (user) return redirect(res, '/dashboard');
-      return html(res, 200, views.signupPage({ next: q.get('next') || '' }));
+      return html(res, 200, views.signupPage({ next: q.get('next') || '', google: googleOn() }));
     }
 
     if (pathname === '/dashboard') {
@@ -481,10 +561,10 @@ async function handle(req, res) {
       const password = String(body.password || '');
       const row = dbm.db.prepare('SELECT * FROM users WHERE email = ?').get(email);
       if (!row || !dbm.verifyPassword(password, row.password_hash)) {
-        return html(res, 401, views.loginPage({ next: body.next || '', err: 'bad' }));
+        return html(res, 401, views.loginPage({ next: body.next || '', err: 'bad', google: googleOn() }));
       }
       if (row.status === 'suspended') {
-        return html(res, 403, views.loginPage({ next: body.next || '', err: 'suspended' }));
+        return html(res, 403, views.loginPage({ next: body.next || '', err: 'suspended', google: googleOn() }));
       }
       const cookie = `lr_sess=${encodeURIComponent(makeToken(row.id))}; Max-Age=${30 * 24 * 3600}; Path=/; HttpOnly; SameSite=Lax; Secure`;
       return redirect(res, (body.next && body.next.startsWith('/') && !body.next.startsWith('//')) ? body.next : '/dashboard', cookie);
@@ -497,10 +577,10 @@ async function handle(req, res) {
       const next = String(body.next || '');
       const nx = next.startsWith('/') && !next.startsWith('//') ? next : '';
       if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
-        return html(res, 400, views.signupPage({ err: 'invalid', values: { name, email }, next }));
+        return html(res, 400, views.signupPage({ err: 'invalid', values: { name, email }, next, google: googleOn() }));
       }
       const exists = dbm.db.prepare('SELECT 1 FROM users WHERE email = ?').get(email);
-      if (exists) return html(res, 409, views.signupPage({ err: 'taken', values: { name, email }, next }));
+      if (exists) return html(res, 409, views.signupPage({ err: 'taken', values: { name, email }, next, google: googleOn() }));
       const r = dbm.db.prepare(
         'INSERT INTO users (email, name, password_hash, role, created_at) VALUES (?,?,?,?,?)')
         .run(email, name, dbm.hashPassword(password), 'user', nowIso());
