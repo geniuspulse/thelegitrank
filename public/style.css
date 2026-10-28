@@ -185,7 +185,13 @@ section{padding:56px 0}
 
 /* dashboard / rows */
 .dash-h{font-size:1.15rem;color:var(--navy);margin:34px 0 16px}
-.row-card{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px}
+ .row-card{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.row-card>div:first-child{min-width:0;flex:1 1 200px}
+@media(max-width:600px){
+  .row-card{align-items:flex-start;gap:10px}
+  .row-actions{width:100%}
+  .row-actions .btn-mini{white-space:normal;text-align:center;flex:1 1 auto}
+}
 .row-card.col{flex-direction:column;align-items:stretch}
 .row-actions{display:flex;gap:10px;flex-wrap:wrap;flex:0 0 auto}
 .resp-form{display:grid;gap:10px;margin-top:12px}
