@@ -98,6 +98,7 @@ const DICT = {
   // auth
   'auth.signupTitle': ['Create your account', 'Pangani akaunti yanu'],
   'auth.signupSub': ['Free forever for buyers.', 'Zaulere nthawi zonse kwa ogula.'],
+  'auth.or': ['or continue with email', 'kapena pitirizani ndi imelo'],
   'auth.loginTitle': ['Welcome back', 'Takulandirani'],
   'auth.name': ['Full name', 'Dzina lonse'],
   'auth.email': ['Email', 'Imeyili'],

@@ -373,15 +373,15 @@ function loginPage({ next, err, google, msg }) {
         <input type="hidden" name="next" value="${esc(next || '')}">
         ${googleMsg}
         ${err === 'suspended' ? `<div class="form-err">${t('auth.suspended')}</div>` : err ? `<div class="form-err">${t('auth.badlogin')}</div>` : ''}
+        ${google ? `<a class="btn-google" href="/auth/google${next ? `?next=${encodeURIComponent(next)}` : ''}">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.1-3.8 6.5-9.4 6.5-16z"/><path fill="#FBBC05" d="M10.4 28.7A14.5 14.5 0 0 1 9.6 24c0-1.6.3-3.2.8-4.7l-7.8-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.1-5.5c-2 1.3-4.5 2.1-8.1 2.1-6.3 0-11.7-3.7-13.6-8.8l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+          Continue with Google
+        </a>
+        <div class="auth-or"><span>${t('auth.or')}</span></div>` : ''}
         <div class="f-row"><label for="em">${t('auth.email')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m3 6 9 7 9-7"/></svg><input id="em" name="email" type="email" required autocomplete="email" placeholder="you@example.com"></div></div>
         <div class="f-row"><label for="pw">${t('auth.password')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="pw" name="password" type="password" required autocomplete="current-password" placeholder="••••••••"></div></div>
         <button class="btn btn-green w100" type="submit">${t('auth.enter')} →</button>
       </form>
-      ${google ? `<div class="auth-or"><span>or</span></div>
-      <a class="btn-google" href="/auth/google${next ? `?next=${encodeURIComponent(next)}` : ''}">
-        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.1-3.8 6.5-9.4 6.5-16z"/><path fill="#FBBC05" d="M10.4 28.7A14.5 14.5 0 0 1 9.6 24c0-1.6.3-3.2.8-4.7l-7.8-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.1-5.5c-2 1.3-4.5 2.1-8.1 2.1-6.3 0-11.7-3.7-13.6-8.8l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
-        Continue with Google
-      </a>` : ''}
       <p class="center muted small auth-alt"><a href="/signup${next ? `?next=${encodeURIComponent(next)}` : ''}">${t('auth.noAccount')}</a></p>
     </div>
   </section>` });
@@ -406,16 +406,16 @@ function signupPage({ err, values, next, google }) {
       <form class="form auth-card" method="post" action="/signup">
         <input type="hidden" name="next" value="${esc(nx)}">
         ${errBox}
+        ${google ? `<a class="btn-google" href="/auth/google${nx ? `?next=${encodeURIComponent(next)}` : ''}">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.1-3.8 6.5-9.4 6.5-16z"/><path fill="#FBBC05" d="M10.4 28.7A14.5 14.5 0 0 1 9.6 24c0-1.6.3-3.2.8-4.7l-7.8-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.1-5.5c-2 1.3-4.5 2.1-8.1 2.1-6.3 0-11.7-3.7-13.6-8.8l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+          Continue with Google
+        </a>
+        <div class="auth-or"><span>${t('auth.or')}</span></div>` : ''}
         <div class="f-row"><label for="nm">${t('auth.name')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg><input id="nm" name="name" required maxlength="80" value="${esc(v.name || '')}" placeholder="Your full name"></div></div>
         <div class="f-row"><label for="em">${t('auth.email')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m3 6 9 7 9-7"/></svg><input id="em" name="email" type="email" required maxlength="120" value="${esc(v.email || '')}" placeholder="you@example.com"></div></div>
         <div class="f-row"><label for="pw">${t('auth.password')}</label><div class="f-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><input id="pw" name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"></div></div>
-        <button class="btn btn-green w100" type="submit">${t('auth.create')} →</button>
+        <button class="btn btn-green w100 auth-submit" type="submit">${t('auth.create')} →</button>
       </form>
-      ${google ? `<div class="auth-or"><span>or</span></div>
-      <a class="btn-google" href="/auth/google${nx ? `?next=${encodeURIComponent(next)}` : ''}">
-        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.1-3.8 6.5-9.4 6.5-16z"/><path fill="#FBBC05" d="M10.4 28.7A14.5 14.5 0 0 1 9.6 24c0-1.6.3-3.2.8-4.7l-7.8-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.1-5.5c-2 1.3-4.5 2.1-8.1 2.1-6.3 0-11.7-3.7-13.6-8.8l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
-        Continue with Google
-      </a>` : ''}
       <p class="center muted small auth-alt"><a href="/login${nx ? `?next=${encodeURIComponent(nx)}` : ''}">${t('auth.haveAccount')}</a></p>
     </div>
   </section>` });
