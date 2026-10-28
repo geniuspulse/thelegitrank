@@ -12,3 +12,5 @@
 2026-10-27 — Item 10: owners cannot review their own business — blocked on both the review form and the POST route with a clear message; regular customers unaffected.
 
 2026-10-28 — Item 15: legal pages live — Terms of Service, Privacy Policy, Cookie Policy, linked from the footer. Receipts/ID docs privacy, the verification-badge caveat, and appeals process are stated explicitly. Items 5 and 13 marked [skip] as owner decisions.
+
+2026-10-28 — Business details editing for added listings: whoever added a business (created_by) can now open its manage page and save details (name, category, city, country, phone, website, description, logo), even if the listing is unclaimed and has no owner yet. Owners and admins keep full access; strangers are redirected with a permission message. "Edit details" button added to the business page for editors, and the dashboard now shows Manage alongside Claim for unclaimed listings you added. Also removed a duplicate write block that let a GET to /business/:slug/profile run the update path.

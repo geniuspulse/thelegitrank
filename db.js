@@ -175,7 +175,7 @@ function uniqueSlug(name) {
 // ---- queries ----
 const BIZ_AGG = `
   b.id, b.slug, b.name, b.category, b.city, b.country, b.description, b.website, b.phone,
-  b.verified, b.verified_at, b.owner_user_id, b.status, b.created_at, b.logo_path,
+  b.verified, b.verified_at, b.owner_user_id, b.created_by, b.status, b.created_at, b.logo_path,
   (SELECT ROUND(AVG(r.rating),1) FROM reviews r WHERE r.business_id = b.id AND r.hidden = 0) AS avg_rating,
   (SELECT COUNT(*) FROM reviews r WHERE r.business_id = b.id AND r.hidden = 0) AS review_count`;
 

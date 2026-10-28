@@ -26,6 +26,12 @@ if (!process.env.SESSION_SECRET) console.warn('[warn] SESSION_SECRET not set —
 dbm.init();
 
 // ---------- helpers ----------
+function canEditBiz(user, b) {
+  if (!user || !b) return false;
+  if (user.role === 'admin') return true;
+  return b.owner_user_id === user.id || b.created_by === user.id;
+}
+
 function nowIso() { return new Date().toISOString(); }
 function esc(s) { return require('./i18n').esc(s); }
 
@@ -243,6 +249,7 @@ async function handle(req, res) {
       return html(res, 200, views.businessPage({
         user, b, reviews, dist: dbm.ratingDistribution(b.id),
         page, pages, myRev, alreadyReviewed: !!myRev, msg: q.get('msg'),
+        canEdit: canEditBiz(user, b),
       }));
     }
 
@@ -277,8 +284,7 @@ async function handle(req, res) {
       const b = dbm.getBusinessBySlug(m[1]);
       if (!b) return html(res, 404, views.notFound({ user }));
       if (!user) return redirect(res, `/login?next=/business/${m[1]}/manage`);
-      if (b.owner_user_id !== user.id && user.role !== 'admin')
-        return redirect(res, `/business/${m[1]}`);
+      if (!canEditBiz(user, b)) return redirect(res, `/business/${m[1]}?msg=noPerm`);
       const reviews = dbm.db.prepare(`
         SELECT r.*, u.name AS author_name FROM reviews r JOIN users u ON u.id = r.user_id
         WHERE r.business_id = ? AND r.hidden = 0 ORDER BY r.created_at DESC`).all(b.id);
@@ -288,31 +294,6 @@ async function handle(req, res) {
     if (pathname === '/businesses/new') {
       if (!user) return redirect(res, '/login?next=/businesses/new');
       return html(res, 200, views.addBizPage({ user, values: { name: q.get('name') || '' } }));
-    }
-
-    m = pathname.match(/^\/business\/([a-z0-9-]+)\/profile$/);
-    if (m) {
-      const b = dbm.getBusinessBySlug(m[1]);
-      if (!b) return html(res, 404, views.notFound({ user }));
-      if (!user) return redirect(res, `/login?next=/business/${m[1]}/manage`);
-      if (b.owner_user_id !== user.id && user.role !== 'admin') return redirect(res, `/business/${m[1]}`);
-      const name = String(body.name || '').trim().slice(0, 120);
-      const category = CATEGORIES.includes(body.category) ? body.category : b.category;
-      const city = String(body.city || '').trim().slice(0, 80) || b.city;
-      const country = COUNTRIES.includes(body.country) ? body.country : b.country;
-      const description = String(body.description || '').trim().slice(0, 600);
-      let websiteSafe = b.website || '';
-      const w = String(body.website || '').trim().slice(0, 200);
-      if (w) websiteSafe = /^https?:\/\//i.test(w) ? w : websiteSafe;
-      const phone = String(body.phone || '').trim().slice(0, 40);
-      if (!name) return redirect(res, `/business/${m[1]}/manage?msg=nameMissing`);
-      dbm.db.prepare('UPDATE businesses SET name=?, category=?, city=?, country=?, description=?, website=?, phone=? WHERE id=?')
-        .run(name, category, city, country, description, websiteSafe, phone, b.id);
-      const lf = body.logo;
-      const lext = isImageFile(lf, 1.5 * 1024 * 1024) && imageExt(lf.data, lf.mime);
-      if (lext) dbm.saveBizLogo(b.id, lf.data, lext);
-      dbm.audit(user, 'business.profile_updated', 'business', b.id, name);
-      return redirect(res, `/business/${m[1]}/manage?msg=nameUpdated`);
     }
 
     m = pathname.match(/^\/claim\/([a-z0-9-]+)$/);
@@ -742,7 +723,7 @@ async function handle(req, res) {
       const b = dbm.getBusinessBySlug(m[1]);
       if (!b) return html(res, 404, views.notFound({ user }));
       if (!user) return redirect(res, `/login?next=/business/${m[1]}/manage`);
-      if (b.owner_user_id !== user.id && user.role !== 'admin') return redirect(res, `/business/${m[1]}`);
+      if (!canEditBiz(user, b)) return redirect(res, `/business/${m[1]}?msg=noPerm`);
       const name = String(body.name || '').trim().slice(0, 120);
       const category = CATEGORIES.includes(body.category) ? body.category : b.category;
       const city = String(body.city || '').trim().slice(0, 80) || b.city;
@@ -759,7 +740,7 @@ async function handle(req, res) {
       const lext = isImageFile(lf, 1.5 * 1024 * 1024) && imageExt(lf.data, lf.mime);
       if (lext) dbm.saveBizLogo(b.id, lf.data, lext);
       dbm.audit(user, 'business.profile_updated', 'business', b.id, name);
-      return redirect(res, `/business/${m[1]}/manage?msg=nameUpdated`);
+      return redirect(res, `/business/${m[1]}/manage?msg=profileSaved`);
     }
 
     m = pathname.match(/^\/claim\/([a-z0-9-]+)$/);

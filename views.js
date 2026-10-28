@@ -91,7 +91,7 @@ ${content}
 </html>`;
 }
 
-const FLASH_ERR = ['error', 'passWrong', 'nameMissing', 'revRate', 'restricted', 'ownBiz'];
+const FLASH_ERR = ['error', 'passWrong', 'nameMissing', 'revRate', 'restricted', 'ownBiz', 'noPerm'];
 function flash(msg) {
   if (!msg) return '';
   const m = FLASH_ERR.includes(msg) ? 'fl-err' : 'fl-ok';
@@ -104,6 +104,8 @@ function flash(msg) {
     'rep.done': tRaw('rep.done'), restricted: tRaw('rev.restricted'), revRate: tRaw('rev.rate'), ownBiz: tRaw('msg.ownBiz'), deleted: 'Listing permanently deleted.',
     nameUpdated: tRaw('dash.nameUpdated'), nameMissing: tRaw('dash.nameMissing'),
     passUpdated: tRaw('dash.passUpdated'), passWrong: tRaw('dash.passWrong'),
+    noPerm: tRaw('msg.noPerm'),
+    profileSaved: tRaw('msg.profileSaved'),
   }[msg];
   if (!text) return '';
   return `<div class="wrap"><div class="flash ${m}">${esc(text)}</div></div>`;
@@ -231,7 +233,7 @@ function reviewItem(r, isOwner) {
   </article>`;
 }
 
-function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyReviewed, msg }) {
+function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyReviewed, msg, canEdit }) {
   const total = b.review_count;
   const bars = [5,4,3,2,1].map(n => `
     <div class="dist-row">
@@ -269,6 +271,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
           ? `<div class="biz-score"><span class="stars-a big">${stars(b.avg_rating)}</span> <b>${b.avg_rating}</b> · ${total} ${t('biz.reviews')}</div>`
           : `<div class="biz-score muted">${t('biz.noReviews')}</div>`}
         ${cta}
+        ${canEdit ? `<a class="btn-mini" href="/business/${esc(b.slug)}/manage">${t('biz.editDetails')}</a>` : ''}
         ${ownerBar}
       </div>
       ${b.description ? `<p class="biz-desc">${esc(b.description)}</p>` : ''}
@@ -494,9 +497,12 @@ function dashboard({ user, reviews, owned, pendingV, hidden, appeals, msg }) {
       </div>
       <div class="row-actions">
         ${!b.verified && !pv ? `<a class="btn-mini btn-mini-g" href="/business/${esc(b.slug)}/verify">${t('dash.applyVerify')}</a>` : ''}
-        ${b.owner_user_id === user.id
+        ${(b.owner_user_id === user.id || b.created_by === user.id || user.role === 'admin')
           ? `<a class="btn-mini" href="/business/${esc(b.slug)}/manage">${t('dash.manage')}</a>`
-          : `<a class="btn-mini btn-mini-g" href="/claim/${esc(b.slug)}">${t('dash.claim')}</a>`}
+          : ''}
+        ${!b.owner_user_id
+          ? `<a class="btn-mini btn-mini-g" href="/claim/${esc(b.slug)}">${t('dash.claim')}</a>`
+          : ''}
       </div>
     </div>`;
   }).join('');
