@@ -444,6 +444,9 @@ async function handle(req, res) {
       return res.end(f.data);
     }
 
+    if (pathname === '/terms') return html(res, 200, views.termsPage());
+    if (pathname === '/privacy') return html(res, 200, views.privacyPage());
+    if (pathname === '/cookies') return html(res, 200, views.cookiesPage());
     if (pathname === '/health') return send(res, 200, 'ok');
 
     if (pathname === '/sitemap.xml') {

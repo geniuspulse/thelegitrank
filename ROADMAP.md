@@ -7,7 +7,7 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [skip] 2. Password reset via email link — needs owner: email provider decision
 - [skip] 3. Phone (SMS/OTP) verification option — needs owner: SMS provider (Africa's Talking / Twilio) and account
 - [x] 4. "Verified purchase" badge — receipt/proof upload on reviews
-- [ ] 5. Business verification tiers (docs, address, phone)
+- [skip] 5. Business verification tiers (docs, address, phone) — needs owner decision: what should each verification tier check and mean?
 - [x] 6. Duplicate business detection before adding
 - [x] 7. Review attachments (photos of product/delivery)
 - [x] 8. Moderation queue with auto-flagging (spam, profanity)
@@ -15,7 +15,7 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 10. Block owners reviewing their own business
 - [x] 11. Report/flag buttons on reviews and profiles
 - [x] 12. Admin analytics dashboard (signups, reviews, flags/day)
-- [ ] 13. Two-factor auth for admin accounts
+- [skip] 13. Two-factor auth for admin accounts — needs owner decision: email/SMS provider for the one-time codes
 - [x] 14. Audit log of admin actions
 - [ ] 15. Legal pages: Terms, Privacy, Cookies
 

@@ -10,3 +10,5 @@
 2026-10-26 — Business profile pictures: logo/photo upload while adding a business, in the owner's new manage-page profile editor (name, category, location, contact, description), and in the admin edit form. Logos serve publicly via /logo/:id, appear on profile heroes and search cards, replacements delete the old file. Owner edits are permission-checked and audited.
 
 2026-10-27 — Item 10: owners cannot review their own business — blocked on both the review form and the POST route with a clear message; regular customers unaffected.
+
+2026-10-28 — Item 15: legal pages live — Terms of Service, Privacy Policy, Cookie Policy, linked from the footer. Receipts/ID docs privacy, the verification-badge caveat, and appeals process are stated explicitly. Items 5 and 13 marked [skip] as owner decisions.

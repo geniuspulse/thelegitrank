@@ -80,7 +80,10 @@ ${content}
       The Legit Rank
     </span><br>
     <span>${t('nav.tagline')} — ${tRaw('home.ctaSub')}</span><br>
-    © ${new Date().getFullYear()} The Legit Rank
+    © ${new Date().getFullYear()} The Legit Rank ·
+    <a class="foot-link" href="/terms">Terms</a> ·
+    <a class="foot-link" href="/privacy">Privacy</a> ·
+    <a class="foot-link" href="/cookies">Cookies</a>
   </div>
 </footer>
 <script src="/app.js"></script>
@@ -627,6 +630,34 @@ function verifyPage({ user, b, err, pending }) {
 }
 
 // ---------- ADMIN ----------
+
+function cookiesPage() {
+  return layout({ title: 'Cookie Policy — The Legit Rank', content: `
+  <section class="page-head"><div class="wrap narrow legal">
+    <h1 class="sec">Cookie Policy</h1>
+    <p class="sec-sub muted">Last updated: 28 October 2026</p>
+    <h2>What cookies are</h2><p>Cookies are small pieces of text stored by your browser. They let a site remember things between page loads.</p><h2>The one cookie we use</h2><p>The Legit Rank uses a single essential session cookie (lr_sess) that keeps you signed in. It contains a signed session identifier, is limited to our site, and cannot be used to track you elsewhere on the internet.</p><h2>No tracking</h2><p>We do not use advertising cookies, analytics trackers, or third-party pixels.</p><h2>Managing cookies</h2><p>You can delete or block cookies in your browser settings. Blocking our session cookie means you will need to sign in again for each page, but the site remains usable for browsing.</p>
+  </div></section>` });
+}
+
+function privacyPage() {
+  return layout({ title: 'Privacy Policy — The Legit Rank', content: `
+  <section class="page-head"><div class="wrap narrow legal">
+    <h1 class="sec">Privacy Policy</h1>
+    <p class="sec-sub muted">Last updated: 28 October 2026</p>
+    <h2>1. What we collect</h2><p>Account details you give us (name, email, password hash), the reviews, photos and receipts you post, business information you submit, and technical records such as your session token. We do not sell your personal data.</p><h2>2. Receipts and identity documents</h2><p>Receipts and verification documents you upload are stored privately. They are visible only to our moderation staff and are never shown publicly or shared with businesses.</p><h2>3. How we use it</h2><p>To run your account, show your reviews, verify businesses, fight spam and fraud, and improve the platform. We use aggregate, non-identifying statistics to understand how the site is used.</p><h2>4. Cookies</h2><p>We use one essential cookie to keep you signed in. We do not use advertising or tracking cookies. See our Cookie Policy.</p><h2>5. Sharing</h2><p>We only disclose personal data when legally required, or to protect the rights and safety of our users. Business contact details you choose to publish on a listing are public.</p><h2>6. Your rights</h2><p>You can request a copy of your data, ask us to correct it, or ask us to delete your account by contacting us. Some records may be retained where the law requires.</p><h2>7. Security</h2><p>Passwords are stored as salted hashes, sessions are signed, and access to private evidence is restricted to authorised staff and recorded in an audit log.</p>
+  </div></section>` });
+}
+
+function termsPage() {
+  return layout({ title: 'Terms of Service — The Legit Rank', content: `
+  <section class="page-head"><div class="wrap narrow legal">
+    <h1 class="sec">Terms of Service</h1>
+    <p class="sec-sub muted">Last updated: 28 October 2026</p>
+    <h2>1. About The Legit Rank</h2><p>The Legit Rank is a review platform that helps buyers across Africa share and read honest experiences with businesses. Reviews reflect the personal opinions of the users who write them, not the views of The Legit Rank.</p><h2>2. Your account</h2><p>You must provide accurate information when creating an account, keep your password secure, and be at least 16 years old. One account per person. You are responsible for activity carried out under your account.</p><h2>3. Reviews</h2><p>Reviews must be based on your own genuine experience with the business. You may not post fake reviews, reviews in exchange for payment, or reviews written for someone else. Businesses may not review their own business or ask others to remove or change honest reviews. We may hide or remove reviews that break these rules.</p><h2>4. Prohibited conduct</h2><p>Do not use The Legit Rank to harass, defame, threaten, or deceive anyone; to post illegal, hateful, or sexually explicit content; or to attempt to manipulate ratings or rankings. Accounts that abuse the platform may be restricted or suspended.</p><h2>5. Business verification</h2><p>A verification badge means we have checked the documents and details a business submitted. It does not guarantee that every transaction with that business will go well. Always use your own judgement when buying.</p><h2>6. Reports and moderation</h2><p>Anyone can report a review, business, or user. We investigate reports and may remove content, suspend accounts, or dismiss reports. If your content was removed you can appeal from your account page.</p><h2>7. Liability</h2><p>The Legit Rank is provided as-is. We are not a party to any transaction between buyers and businesses and we are not liable for losses arising from such transactions, to the extent permitted by law.</p><h2>8. Changes</h2><p>We may update these terms and will post the new version on this page. Continuing to use The Legit Rank after a change means you accept the updated terms.</p><h2>9. Contact</h2><p>Questions about these terms can be sent through the contact links on this site.</p>
+  </div></section>` });
+}
+
 // ---------- ADMIN CONTROL CENTRE ----------
 const ADM_SECTIONS = [
   ['overview', 'Overview', '/admin'],
@@ -1033,6 +1064,6 @@ function notFound({ user }) {
 }
 
 module.exports = { layout, home, searchPage, businessPage, reviewForm, loginPage, signupPage,
-  addBizPage, claimPage, dashboard, bizManagePage, verifyPage, notFound, stars, bizCard,
+  addBizPage, claimPage, dashboard, bizManagePage, verifyPage, notFound, stars, bizCard, termsPage, privacyPage, cookiesPage,
   adminOverview, adminBusinesses, adminBusinessDetail, adminVerifications, adminModeration,
   adminReports, adminReportCase, adminUsers, adminSettings, adminAnalytics, adminAudit, reportPage };
