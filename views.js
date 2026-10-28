@@ -101,7 +101,7 @@ function flash(msg) {
     bizAdded: tRaw('add.added'), claimSent: tRaw('claim.sent'),
     verSent: tRaw('ver.sent'), respPosted: tRaw('resp.posted'),
     approved: tRaw('adm.approved'), rejected: tRaw('adm.rejected'),
-    'rep.done': tRaw('rep.done'), restricted: tRaw('rev.restricted'), revRate: tRaw('rev.rate'), ownBiz: tRaw('msg.ownBiz'),
+    'rep.done': tRaw('rep.done'), restricted: tRaw('rev.restricted'), revRate: tRaw('rev.rate'), ownBiz: tRaw('msg.ownBiz'), deleted: 'Listing permanently deleted.',
     nameUpdated: tRaw('dash.nameUpdated'), nameMissing: tRaw('dash.nameMissing'),
     passUpdated: tRaw('dash.passUpdated'), passWrong: tRaw('dash.passWrong'),
   }[msg];
@@ -792,6 +792,14 @@ function adminBusinessDetail({ user, b, reviews, others, msg }) {
           : `<form method="post" action="/admin/business/${b.id}/status"><input type="hidden" name="status" value="active"><button class="btn-mini btn-mini-g">Restore to active</button></form>`}
       </div>
       <div class="card form adm-block">
+        <h3>Delete listing permanently</h3>
+        <p class="small muted">Hard delete: removes the listing with all its reviews, claims, verifications, reports and appeals. Type DELETE to confirm.</p>
+        <form method="post" action="/admin/business/${b.id}/delete" class="adm-decision">
+          <input type="text" name="confirm" placeholder="Type DELETE" required>
+          <button class="btn-mini">Delete forever</button>
+        </form>
+      </div>
+      <div class="card form adm-block">
         <h3>Merge duplicate</h3>
         <p class="small muted">Moves all reviews, claims and reports into the surviving listing, then deletes this one. Nothing is lost.</p>
         <form method="post" action="/admin/businesses/merge">
@@ -967,7 +975,12 @@ function adminUsers({ user, users, qq, msg }) {
           <select name="status"><option value="active" ${u.status === 'active' ? 'selected' : ''}>Active</option><option value="restricted" ${u.status === 'restricted' ? 'selected' : ''}>Restricted (no reviews)</option><option value="suspended" ${u.status === 'suspended' ? 'selected' : ''}>Suspended (no login)</option></select>
           <select name="role"><option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option><option value="moderator" ${u.role === 'moderator' ? 'selected' : ''}>moderator</option><option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option></select>
           <button class="btn-mini">Apply</button>
-        </form>`}
+        </form>
+        ${u.role !== 'admin' ? `
+        <form method="post" action="/admin/user/${u.id}/delete" class="adm-decision" style="margin-top:6px">
+          <input type="text" name="confirm" placeholder="Type DELETE" required style="width:90px">
+          <button class="btn-mini">Delete user</button>
+        </form>` : ''}`}
       </td>
     </tr>`).join('');
   return admPage(user, 'users', 'User management', `

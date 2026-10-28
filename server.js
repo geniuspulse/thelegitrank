@@ -645,9 +645,10 @@ async function handle(req, res) {
       let websiteSafe = '';
       if (website && /^https?:\/\//i.test(website)) websiteSafe = website;
       const slug = dbm.uniqueSlug(name);
-      const bid = Number(dbm.db.prepare(`INSERT INTO businesses (slug, name, category, city, country, description, website, phone, created_by, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?)`)
-        .run(slug, name, category, city, country, description, websiteSafe, phone, user.id, nowIso()).lastInsertRowid);
+      const bid = Number(dbm.db.prepare(`INSERT INTO businesses (slug, name, category, city, country, description, website, phone, created_by, owner_user_id, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+        .run(slug, name, category, city, country, description, websiteSafe, phone, user.id, user.id, nowIso()).lastInsertRowid);
+      dbm.audit(user, 'business.autoclaimed', 'business', bid, name);
       const lf = body.logo;
       const lext = isImageFile(lf, 1.5 * 1024 * 1024) && imageExt(lf.data, lf.mime);
       if (lext) dbm.saveBizLogo(bid, lf.data, lext);
@@ -757,7 +758,30 @@ async function handle(req, res) {
         return redirect(res, '/admin/business/' + m[1] + '?msg=Saved');
       }
       // business suspend/restore
-      m = pathname.match(/^\/admin\/business\/(\d+)\/status$/);
+      m = pathname.match(/^\/admin\/business\/(\d+)\/delete$/);
+    if (m) {
+      if (!admAllow(user, 'moderation')) return html(res, 404, views.notFound({ user }));
+      if (String(body.confirm || '').trim().toUpperCase() !== 'DELETE') return redirect(res, `/admin/business/${m[1]}?msg=delNoConfirm`);
+      const id = Number(m[1]);
+      const b = dbm.getBusinessById(id);
+      if (!b) return html(res, 404, views.notFound({ user }));
+      const rids = dbm.db.prepare('SELECT id FROM reviews WHERE business_id = ?').all(id).map(r => r.id);
+      if (rids.length) {
+        const qm = rids.map(() => '?').join(',');
+        dbm.db.prepare(`DELETE FROM appeals WHERE review_id IN (${qm})`).run(...rids);
+        dbm.db.prepare(`DELETE FROM reports WHERE review_id IN (${qm})`).run(...rids);
+      }
+      dbm.db.prepare('DELETE FROM reports WHERE business_id = ?').run(id);
+      dbm.db.prepare('DELETE FROM reviews WHERE business_id = ?').run(id);
+      dbm.db.prepare('DELETE FROM claims WHERE business_id = ?').run(id);
+      dbm.db.prepare('DELETE FROM verifications WHERE business_id = ?').run(id);
+      try { if (b.logo_path) fs.unlinkSync(path.join(dbm.DATA_DIR, b.logo_path)); } catch {}
+      dbm.db.prepare('DELETE FROM businesses WHERE id = ?').run(id);
+      dbm.audit(user, 'business.deleted', 'business', id, b.name + ' (hard delete)');
+      return redirect(res, '/admin/businesses?msg=deleted');
+    }
+
+    m = pathname.match(/^\/admin\/business\/(\d+)\/status$/);
       if (m) {
         if (!admAllow(user, 'businesses')) return html(res, 404, views.notFound({ user }));
         const status = ['active', 'suspended'].includes(body.status) ? body.status : 'active';
@@ -832,7 +856,26 @@ async function handle(req, res) {
         return redirect(res, '/admin/report/' + m[1] + '?msg=Saved');
       }
       // user status/role
-      m = pathname.match(/^\/admin\/user\/(\d+)\/update$/);
+      m = pathname.match(/^\/admin\/user\/(\d+)\/delete$/);
+    if (m) {
+      if (user.role !== 'admin') return html(res, 404, views.notFound({ user }));
+      if (String(body.confirm || '').trim().toUpperCase() !== 'DELETE') return redirect(res, `/admin/user/${m[1]}?msg=delNoConfirm`);
+      const uid = Number(m[1]);
+      const target = dbm.db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
+      if (!target || target.role === 'admin') return html(res, 404, views.notFound({ user }));
+      dbm.db.prepare(`DELETE FROM appeals WHERE user_id = ?`).run(uid);
+      dbm.db.prepare('DELETE FROM reports WHERE reporter_user_id = ? OR target_user_id = ?').run(uid, uid);
+      const rbids = dbm.db.prepare('SELECT business_id FROM reviews WHERE user_id = ?').all(uid).map(r => r.business_id);
+      dbm.db.prepare('DELETE FROM reviews WHERE user_id = ?').run(uid);
+      dbm.db.prepare('DELETE FROM verifications WHERE user_id = ?').run(uid);
+      dbm.db.prepare('DELETE FROM claims WHERE user_id = ?').run(uid);
+      dbm.db.prepare('UPDATE businesses SET owner_user_id = NULL WHERE owner_user_id = ?').run(uid);
+      dbm.db.prepare('DELETE FROM users WHERE id = ?').run(uid);
+      dbm.audit(user, 'user.deleted', 'user', uid, target.email + ' (hard delete)');
+      return redirect(res, '/admin/users?msg=deleted');
+    }
+
+    m = pathname.match(/^\/admin\/user\/(\d+)\/update$/);
       if (m) {
         if (!admAllow(user, 'users')) return html(res, 404, views.notFound({ user }));
         const uid = Number(m[1]);
