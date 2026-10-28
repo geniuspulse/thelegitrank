@@ -1,5 +1,6 @@
 // views.js — server-rendered HTML templates
 const { t, tRaw, esc } = require('./i18n');
+const SEO = require('./seo');
 
 const CATEGORIES = ['Fashion','Electronics','Home & Living','Food & Restaurant','Beauty','Services','Education','Retail','Travel','Transport','Health','Other'];
 const COUNTRIES = ['Malawi','Zambia','Zimbabwe','Tanzania','Kenya','Nigeria','Ghana','Rwanda','Uganda','South Africa','Mozambique','Botswana','Namibia','Cameroon','Ivory Coast','Senegal','Ethiopia','Other'];
@@ -29,7 +30,7 @@ function bizCard(b) {
   </a>`;
 }
 
-function layout({ title, content, user, hero = false }) {
+function layout({ title, content, user, hero = false, seo }) {
   const nav = `
   <nav aria-label="Main">
     <div class="wrap nav-inner">
@@ -61,8 +62,7 @@ function layout({ title, content, user, hero = false }) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${esc(title)}</title>
-<meta name="description" content="The independent review platform for African businesses. Check real buyer ratings, read honest reviews, and find verified sellers.">
+${SEO.head(Object.assign({ title }, seo || {}))}
 <meta name="theme-color" content="#0B192C">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z' fill='%2300A86B'/%3E%3Cpath d='M8.6 12.2l2.2 2.2 4.6-4.6' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -79,7 +79,11 @@ ${content}
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z" fill="#00A86B"/><path d="M8.6 12.2l2.2 2.2 4.6-4.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       The Legit Rank
     </span><br>
-    <span>${t('nav.tagline')} — ${tRaw('home.ctaSub')}</span><br>
+    <span>${t('nav.tagline')} — ${tRaw('home.ctaSub')}</span>
+    <div class="foot-cats">
+      <span class="foot-cats-l">${t('nav.byCategory')}</span>
+      ${CATEGORIES.map(c => `<a href="/search?category=${encodeURIComponent(c)}">${esc(c)}</a>`).join('')}
+    </div>
     © ${new Date().getFullYear()} The Legit Rank ·
     <a class="foot-link" href="/terms">Terms</a> ·
     <a class="foot-link" href="/privacy">Privacy</a> ·
@@ -113,7 +117,13 @@ function flash(msg) {
 
 // ---------- HOME ----------
 function home({ user, stats, top, msg }) {
-  return layout({ title: 'The Legit Rank — The truth before you buy', user, hero: true, content: `
+  const seo = {
+    title: 'The Legit Rank — Real reviews of African businesses',
+    desc: `Check a business before you pay. ${stats.businesses} African business${stats.businesses === 1 ? '' : 'es'}, ${stats.reviews} buyer review${stats.reviews === 1 ? '' : 's'} and ${stats.verified} verified seller${stats.verified === 1 ? '' : 's'}, with honest ratings you can trust.`,
+    path: '/',
+    jsonLd: [SEO.websiteLd(), SEO.orgLd()],
+  };
+  return layout({ title: 'The Legit Rank — The truth before you buy', user, hero: true, seo, content: `
   ${flash(msg || '')}
   <header>
     <div class="wrap hero">
@@ -186,7 +196,21 @@ function home({ user, stats, top, msg }) {
 function searchPage({ user, q, category, results, msg }) {
   const chips = [''].concat(CATEGORIES).map(c =>
     `<a class="chip ${c === category ? 'chip-on' : ''}" href="/search?q=${encodeURIComponent(q || '')}${c ? '&category=' + encodeURIComponent(c) : ''}">${esc(c || 'All')}</a>`).join('');
-  return layout({ title: (q ? `${q} — ` : '') + 'Search — The Legit Rank', user, content: `
+  const catPart = category ? `${category} businesses` : 'African businesses';
+  const seo = q ? {
+    title: `Search results for “${q}” — The Legit Rank`,
+    desc: `Businesses matching “${q}” on The Legit Rank. Read buyer reviews and ratings before you pay.`,
+    path: `/search?q=${encodeURIComponent(q)}${category ? '&category=' + encodeURIComponent(category) : ''}`,
+    noindex: true,
+  } : {
+    title: `${catPart[0].toUpperCase() + catPart.slice(1)} — reviews and ratings — The Legit Rank`,
+    desc: `Browse ${category ? category.toLowerCase() + ' businesses' : 'businesses'} reviewed by real buyers across Africa. ${results.length} listings with ratings, reviews and verified seller badges.`,
+    path: category ? `/search?category=${encodeURIComponent(category)}` : '/search',
+    jsonLd: [SEO.breadcrumbLd(category
+      ? [{ name: 'Home', path: '/' }, { name: 'Browse', path: '/search' }, { name: category, path: `/search?category=${encodeURIComponent(category)}` }]
+      : [{ name: 'Home', path: '/' }, { name: 'Browse', path: '/search' }])],
+  };
+  return layout({ title: (q ? `${q} — ` : '') + 'Search — The Legit Rank', user, seo, content: `
   <section class="page-head">
     <div class="wrap">
       <h1 class="sec">${q ? `${t('search.results')}: “${esc(q)}”` : t('nav.browse')}</h1>
@@ -252,7 +276,26 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
     ? ''
     : `<a class="claim-link" href="/claim/${esc(b.slug)}">${t('biz.claim')}</a> <a class="claim-link" href="/report?type=scam&biz=${esc(b.slug)}">${t('biz.report')}</a>`;
 
-  return layout({ title: `${b.name} — Reviews — The Legit Rank`, user, content: `
+  const seo = {
+    title: `${b.name} reviews — ${b.city}, ${b.country}`,
+    desc: b.review_count
+      ? `${b.name} in ${b.city}, ${b.country} is rated ${b.avg_rating} out of 5 from ${b.review_count} buyer review${b.review_count === 1 ? '' : 's'}. Read real experiences before you pay.`
+      : (b.description || `${b.name} — ${b.category} in ${b.city}, ${b.country}. Be the first to review them on The Legit Rank.`),
+    path: `/business/${b.slug}`,
+    image: b.logo_path ? `/logo/${b.id}` : null,
+    type: 'business.business',
+    modified: (b.updated_at || b.created_at || '').slice(0, 10) || undefined,
+    jsonLd: [
+      SEO.businessLd(b, reviews),
+      SEO.breadcrumbLd([
+        { name: 'Home', path: '/' },
+        { name: 'Browse', path: '/search' },
+        { name: b.category || 'Business', path: `/search?category=${encodeURIComponent(b.category || '')}` },
+        { name: b.name, path: `/business/${b.slug}` },
+      ]),
+    ],
+  };
+  return layout({ title: `${b.name} — Reviews — The Legit Rank`, user, seo, content: `
   ${flash(msg || '')}
   <section class="biz-hero">
     <div class="wrap">
@@ -332,10 +375,40 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
 function reviewForm({ user, b, existing }) {
   const r = existing || { rating: 5, title: '', body: '' };
   const cur = ['', '', '', '', ''].map((_, i) => `<button type="button" class="star-btn ${i + 1 <= r.rating ? 'on' : ''}" data-v="${i + 1}" aria-label="${i + 1} star">★</button>`).join('');
-  return layout({ title: `${existing ? 'Update' : 'Write'} review — ${b.name}`, user, content: `
-  <section class="page-head">
+  const seo = {
+    title: `${existing ? 'Update your review of' : 'Write a review for'} ${b.name} — ${b.city}`,
+    desc: `Share your experience with ${b.name} in ${b.city}, ${b.country}. Real buyer reviews help people across Africa buy with confidence.`,
+    path: `/business/${b.slug}/review`,
+    noindex: true,
+    jsonLd: [SEO.breadcrumbLd([
+      { name: 'Home', path: '/' },
+      { name: b.name, path: `/business/${b.slug}` },
+      { name: existing ? 'Update review' : 'Write review', path: `/business/${b.slug}/review` },
+    ])],
+  };
+  return layout({ title: `${existing ? 'Update' : 'Write'} review — ${b.name}`, user, seo, content: `
+  <section class="rv-hero">
     <div class="wrap narrow">
-      <h1 class="sec">${t('rev.title')}</h1>
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="/">Home</a><span>/</span>
+        <a href="/search?category=${encodeURIComponent(b.category || '')}">${esc(b.category || 'Browse')}</a><span>/</span>
+        <a href="/business/${esc(b.slug)}">${esc(b.name)}</a><span>/</span>
+        <b>${existing ? 'Update review' : 'Write review'}</b>
+      </nav>
+      <div class="rv-hero-top">
+        <div class="biz-avatar big">${b.logo_path ? `<img src="/logo/${b.id}" alt="${esc(b.name)} logo">` : esc(b.name.slice(0, 2).toUpperCase())}</div>
+        <div class="rv-hero-copy">
+          <h1>${t(existing ? 'rev.heroEdit' : 'rev.hero')} <span class="rv-hero-name">${esc(b.name)}</span></h1>
+          <p class="rv-hero-meta">${esc(b.category)} · ${esc(b.city)}, ${esc(b.country)}</p>
+          ${b.review_count
+            ? `<p class="rv-hero-score"><span class="stars-a">${stars(b.avg_rating)}</span> <b>${b.avg_rating}</b><span class="rv-of">/5</span> · ${b.review_count} ${t('rev.reviewsWord')}</p>`
+            : `<p class="rv-hero-score muted">${t('rev.firstReview')}</p>`}
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="page-head rv-head">
+    <div class="wrap narrow">
       <p class="sec-sub muted">${t('rev.rules')}</p>
       <form class="form" method="post" action="/business/${esc(b.slug)}/review" enctype="multipart/form-data">
         <input type="hidden" name="rating" id="ratingVal" value="${r.rating}">
@@ -358,7 +431,7 @@ function loginPage({ next, err, google, msg }) {
   const googleMsg = msg === 'googleFail' ? '<div class="form-err">Google sign-in could not be completed. Please try again.</div>'
     : msg === 'googleOff' ? '<div class="form-err">Google sign-in is not configured yet.</div>'
     : msg === 'googleSuspended' ? '<div class="form-err">This account is suspended.</div>' : '';
-  return layout({ title: 'Log in — The Legit Rank', user: null, content: `
+  return layout({ title: 'Log in — The Legit Rank', user: null, seo: { desc: 'Log in to The Legit Rank to write reviews, manage your business and track replies.', path: '/login', noindex: true }, content: `
   <section class="auth-hero">
     <div class="wrap narrow">
       <span class="badge-lg"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z" fill="#00c07a"/><path d="M8.6 12.2l2.2 2.2 4.6-4.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -392,7 +465,7 @@ function signupPage({ err, values, next, google }) {
   const nx = next && next.startsWith('/') && !next.startsWith('//') ? next : '';
   const errBox = err === 'taken' ? `<div class="form-err">${t('auth.emailTaken')}</div>` :
                  err ? '<div class="form-err">Please fill in all fields. Password must be at least 8 characters.</div>' : '';
-  return layout({ title: 'Sign up — The Legit Rank', user: null, content: `
+  return layout({ title: 'Sign up — The Legit Rank', user: null, seo: { desc: 'Create a free account on The Legit Rank to review businesses and build trust across Africa.', path: '/signup', noindex: true }, content: `
   <section class="auth-hero">
     <div class="wrap narrow">
       <span class="badge-lg"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z" fill="#00c07a"/><path d="M8.6 12.2l2.2 2.2 4.6-4.6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -435,7 +508,7 @@ function addBizPage({ user, err, values, added, dups }) {
                  err === 'dup' ? `<div class="form-err">${t('add.dupWarn')}</div>` : '';
   const catOpts = CATEGORIES.map(c => `<option ${v.category === c ? 'selected' : ''}>${c}</option>`).join('');
   const ctyOpts = COUNTRIES.map(c => `<option ${v.country === c ? 'selected' : ''}>${c}</option>`).join('');
-  return layout({ title: 'Add a business — The Legit Rank', user, content: `
+  return layout({ title: 'Add a business — The Legit Rank', user, seo: { desc: 'Add an African business to The Legit Rank so buyers can review and rate it.', path: '/businesses/new', noindex: true }, content: `
   <section class="page-head"><div class="wrap narrow">
     <h1 class="sec">${t('add.title')}</h1>
     <p class="sec-sub muted">${t('add.sub')}</p>
@@ -462,7 +535,7 @@ function addBizPage({ user, err, values, added, dups }) {
 
 // ---------- CLAIM ----------
 function claimPage({ user, b, err }) {
-  return layout({ title: `Claim ${b.name} — The Legit Rank`, user, content: `
+  return layout({ title: `Claim ${b.name} — The Legit Rank`, user, seo: { desc: `Claim ${b.name} on The Legit Rank to reply to reviews and manage your listing.`, path: `/claim/${b.slug}`, noindex: true }, content: `
   <section class="page-head"><div class="wrap narrow">
     <h1 class="sec">${t('claim.title')}</h1>
     <p class="sec-sub muted">${esc(b.name)} — ${esc(b.city)}, ${esc(b.country)}</p>
@@ -522,7 +595,7 @@ function dashboard({ user, reviews, owned, pendingV, hidden, appeals, msg }) {
       </div>
     </div>`).join('');
 
-  return layout({ title: 'My account — The Legit Rank', user, content: `
+  return layout({ title: 'My account — The Legit Rank', user, seo: { desc: 'Your The Legit Rank account: reviews, businesses and settings.', path: '/dashboard', noindex: true }, content: `
   <section class="dash-hero">
     <div class="wrap dash-top">
       <div class="dash-av">${initials}</div>
@@ -620,7 +693,7 @@ function bizManagePage({ user, b, reviews, verif, msg }) {
 
   const catOpts = CATEGORIES.map(c => `<option ${b.category === c ? 'selected' : ''}>${c}</option>`).join('');
   const ctyOpts = COUNTRIES.map(c => `<option ${b.country === c ? 'selected' : ''}>${c}</option>`).join('');
-  return layout({ title: `Manage ${b.name} — The Legit Rank`, user, content: `
+  return layout({ title: `Manage ${b.name} — The Legit Rank`, user, seo: { desc: `Manage the ${b.name} listing on The Legit Rank.`, path: `/business/${b.slug}/manage`, noindex: true }, content: `
   <section class="page-head"><div class="wrap">
     <h1 class="sec">${esc(b.name)}</h1>
     <p class="sec-sub muted">${statusChip} ${ownerChip}</p>
@@ -666,7 +739,7 @@ function bizManagePage({ user, b, reviews, verif, msg }) {
 
 // ---------- DELETE OWN REVIEW ----------
 function deleteReviewPage({ user, r }) {
-  return layout({ title: 'Delete review — The Legit Rank', user, content: `
+  return layout({ title: 'Delete review — The Legit Rank', user, seo: { desc: 'Delete your review on The Legit Rank.', path: '/review/delete', noindex: true }, content: `
   <section class="pad"><div class="wrap narrow">
     <h1 class="sec">${t('rev.deleteTitle')}</h1>
     <div class="card row-card col">
@@ -691,13 +764,13 @@ function deleteReviewPage({ user, r }) {
 // ---------- VERIFICATION APPLY ----------
 function verifyPage({ user, b, err, pending }) {
   if (pending) {
-    return layout({ title: 'Verification — The Legit Rank', user, content: `
+    return layout({ title: 'Verification — The Legit Rank', user, seo: { desc: 'Apply for a verified badge on The Legit Rank.', path: '/verify', noindex: true }, content: `
     <section class="page-head"><div class="wrap narrow">
       <h1 class="sec">${t('ver.title')}</h1>
       <div class="empty"><p class="p-chip">${t('dash.pendingVerify')}</p></div>
     </div></section>` });
   }
-  return layout({ title: 'Verification — The Legit Rank', user, content: `
+  return layout({ title: 'Verification — The Legit Rank', user, seo: { desc: 'Apply for a verified badge on The Legit Rank.', path: '/verify', noindex: true }, content: `
   <section class="page-head"><div class="wrap narrow">
     <h1 class="sec">${t('ver.title')}</h1>
     <p class="sec-sub muted">${esc(b.name)} — ${t('ver.sub')}</p>
@@ -718,7 +791,7 @@ function verifyPage({ user, b, err, pending }) {
 // ---------- ADMIN ----------
 
 function cookiesPage() {
-  return layout({ title: 'Cookie Policy — The Legit Rank', content: `
+  return layout({ title: 'Cookie Policy — The Legit Rank', seo: { desc: 'How The Legit Rank uses cookies and how you can control them.', path: '/cookies' }, content: `
   <section class="page-head"><div class="wrap narrow legal">
     <h1 class="sec">Cookie Policy</h1>
     <p class="sec-sub muted">Last updated: 28 October 2026</p>
@@ -727,7 +800,7 @@ function cookiesPage() {
 }
 
 function privacyPage() {
-  return layout({ title: 'Privacy Policy — The Legit Rank', content: `
+  return layout({ title: 'Privacy Policy — The Legit Rank', seo: { desc: 'What personal data The Legit Rank collects, why we collect it and the rights you have over it.', path: '/privacy' }, content: `
   <section class="page-head"><div class="wrap narrow legal">
     <h1 class="sec">Privacy Policy</h1>
     <p class="sec-sub muted">Last updated: 28 October 2026</p>
@@ -736,7 +809,7 @@ function privacyPage() {
 }
 
 function termsPage() {
-  return layout({ title: 'Terms of Service — The Legit Rank', content: `
+  return layout({ title: 'Terms of Service — The Legit Rank', seo: { desc: 'The rules for using The Legit Rank, for buyers, reviewers and business owners.', path: '/terms' }, content: `
   <section class="page-head"><div class="wrap narrow legal">
     <h1 class="sec">Terms of Service</h1>
     <p class="sec-sub muted">Last updated: 28 October 2026</p>
@@ -761,7 +834,7 @@ function admNav(active) {
     `<a class="chip ${id === active ? 'chip-on' : ''}" href="${href}">${label}</a>`).join('')}</nav>`;
 }
 function admPage(user, active, heading, inner, msg) {
-  return layout({ title: heading + ' — Control Centre — The Legit Rank', user, content: `
+  return layout({ title: heading + ' — Control Centre — The Legit Rank', user, seo: { desc: 'The Legit Rank admin control centre.', path: '/admin', noindex: true }, content: `
   <section class="page-head"><div class="wrap">
     <h1 class="sec">Control Centre</h1>
     <p class="sec-sub muted small">The Legit Rank staff area — every action is recorded in the audit log.</p>
@@ -1134,7 +1207,7 @@ function adminAudit({ user, entries, msg }) {
 // ---------- PUBLIC: report a scam / review ----------
 function reportPage({ user, type, biz, reviewId, err }) {
   const isReview = type === 'review' && reviewId;
-  return layout({ title: 'Report — The Legit Rank', user, content: `
+  return layout({ title: 'Report — The Legit Rank', user, seo: { desc: 'Report a scam, a suspicious business or a review on The Legit Rank.', path: '/report', noindex: true }, content: `
   <section class="page-head"><div class="wrap narrow">
     <h1 class="sec">${isReview ? 'Report a review' : 'Report a scam or problem'}</h1>
     <p class="sec-sub muted">${t('rep.sub')}</p>
@@ -1154,7 +1227,7 @@ function reportPage({ user, type, biz, reviewId, err }) {
 
 // ---------- 404 ----------
 function notFound({ user }) {
-  return layout({ title: 'Not found — The Legit Rank', user, content: `
+  return layout({ title: 'Not found — The Legit Rank', user, seo: { desc: 'This page could not be found on The Legit Rank.', path: '/404', noindex: true }, content: `
   <section class="page-head"><div class="wrap narrow center">
     <h1 class="sec">404</h1>
     <p class="muted">The page you're looking for doesn't exist.</p>

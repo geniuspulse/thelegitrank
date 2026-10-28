@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const dbm = require('./db');
+const SEO = require('./seo');
 const views = require('./views');
 
 const PORT = Number(process.env.PORT) || 80;
@@ -177,7 +178,7 @@ function redirect(res, loc, extraCookies) {
   res.end();
 }
 
-const MIME = { '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png' };
+const MIME = { '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon' };
 function serveStatic(req, res, file) {
   const p = path.join(__dirname, 'public', file);
   if (!p.startsWith(path.join(__dirname, 'public'))) return send(res, 404, 'Not found');
@@ -218,7 +219,15 @@ async function handle(req, res) {
   if (method === 'GET' || method === 'HEAD') {
     if (pathname === '/style.css') return serveStatic(req, res, 'style.css');
     if (pathname === '/app.js') return serveStatic(req, res, 'app.js');
-    if (pathname === '/robots.txt') return serveStatic(req, res, 'robots.txt');
+    if (pathname === '/og-default.jpg') return serveStatic(req, res, 'og-default.jpg');
+    if (pathname === '/robots.txt') {
+      const body = ['User-agent: *', 'Allow: /',
+        'Disallow: /admin', 'Disallow: /dashboard', 'Disallow: /businesses/new',
+        'Disallow: /claim/', 'Disallow: /verify/', 'Disallow: /report',
+        'Disallow: /review/', 'Disallow: /login', 'Disallow: /signup', 'Disallow: /auth/',
+        '', 'Sitemap: ' + SEO.SITE + '/sitemap.xml', ''].join('\n');
+      return send(res, 200, body, { 'Content-Type': 'text/plain; charset=utf-8' });
+    }
     if (pathname === '/favicon.ico') return send(res, 204, '');
   }
 
@@ -524,12 +533,18 @@ async function handle(req, res) {
     if (pathname === '/health') return send(res, 200, 'ok');
 
     if (pathname === '/sitemap.xml') {
-      const biz = dbm.db.prepare(`SELECT slug FROM businesses WHERE status='active' ORDER BY id DESC LIMIT 5000`).all();
-      const urls = ['', '/search', '/businesses/new']
-        .concat(biz.map(b => '/business/' + b.slug))
-        .map(u => `<url><loc>https://pyokvdthsosquhtqlp6hzpuw.185.197.249.92.sslip.io${u}</loc></url>`).join('');
-      return send(res, 200, `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`,
-        { 'Content-Type': 'application/xml' });
+      const biz = dbm.db.prepare(`SELECT slug, created_at FROM businesses WHERE status='active' ORDER BY id DESC LIMIT 5000`).all();
+      const cats = dbm.db.prepare(`SELECT category, COUNT(*) AS n FROM businesses WHERE status='active' GROUP BY category HAVING n > 0`).all();
+      const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const entry = (p, lastmod, priority) => `<url><loc>${esc(SEO.SITE + p)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}<priority>${priority}</priority></url>`;
+      const today = new Date().toISOString().slice(0, 10);
+      const urls = [entry('/', today, '1.0'), entry('/search', today, '0.8')]
+        .concat(cats.map(c => entry(`/search?category=${encodeURIComponent(c.category)}`, today, '0.7')))
+        .concat([entry('/terms', today, '0.3'), entry('/privacy', today, '0.3'), entry('/cookies', today, '0.3')])
+        .concat(biz.map(b => entry('/business/' + b.slug, (b.created_at || '').slice(0, 10) || undefined, '0.9')))
+        .join('');
+      return send(res, 200, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`,
+        { 'Content-Type': 'application/xml; charset=utf-8' });
     }
 
     // ---------- PUBLIC: report form ----------

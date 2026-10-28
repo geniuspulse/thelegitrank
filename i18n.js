@@ -83,6 +83,11 @@ const DICT = {
   'biz.report': ['Report a problem', 'Lavomereza vuto'],
 
   // review form
+  'rev.hero': ['Review', 'Lemberani ndemanga za'],
+  'rev.heroEdit': ['Update your review of', 'Sinthani ndemanga yanu ya'],
+  'rev.reviewsWord': ['reviews', 'ndemanga'],
+  'rev.firstReview': ['No reviews yet. Yours will be the first.', 'Palibe ndemanga. Yanu ikhale yoyambirira.'],
+  'nav.byCategory': ['Browse by category', 'Yang\'anani m\'magulu'],
   'rev.title': ['Share your experience', 'Gawani zomwe mwazolowera'],
   'rev.rating': ['Your rating', 'Reiting yanu'],
   'rev.name': ['Review headline', 'Mutu wa ndemanga'],
