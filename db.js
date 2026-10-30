@@ -95,6 +95,7 @@ function init() {
 }
 
 function migrate() {
+  db.exec(`CREATE TABLE IF NOT EXISTS review_helpful_votes (review_id INTEGER NOT NULL, user_id INTEGER NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (review_id, user_id))`);
   const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map(c => c.name);
   if (!cols('users').includes('status')) db.exec(`ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`);
   const rc = cols('reviews');
@@ -204,7 +205,8 @@ function topBusinesses(limit = 6) {
 }
 function reviewsForBusiness(bid, limit = 10, offset = 0) {
   return db.prepare(`
-    SELECT r.*, u.name AS author_name
+    SELECT r.*, u.name AS author_name,
+      (SELECT COUNT(*) FROM review_helpful_votes v WHERE v.review_id = r.id) AS helpful_count
     FROM reviews r JOIN users u ON u.id = r.user_id
     WHERE r.business_id = ? AND r.hidden = 0
     ORDER BY r.created_at DESC LIMIT ? OFFSET ?`).all(bid, limit, offset);

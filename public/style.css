@@ -372,3 +372,5 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
 .foot-cats-l{color:#94a3b8;font-weight:600;margin-right:2px}
 .foot-cats a{color:#cbd5e1;text-decoration:none}
 .foot-cats a:hover{color:#fff;text-decoration:underline}
+
+.helpful-form{margin-top:12px}.helpful-form button{padding:6px 10px;font-size:.82rem}.helpful-form button:disabled{opacity:.6;cursor:not-allowed}

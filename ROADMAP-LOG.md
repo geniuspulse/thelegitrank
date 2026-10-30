@@ -18,3 +18,5 @@
 2026-10-28 — Business management and review management. The business manage page is now a control panel: verification/unclaimed status chips, rating, review count, reply rate and reply totals, quick links to the public page, verification application and claim, the details editor, and a reviews section where owners can post, update or remove their reply on any review. Reviewers can now delete their own reviews from the dashboard behind a confirmation page (author or admin only) — the review, its photo, receipt, reports and appeals are removed together and the deletion is audit-logged.
 
 2026-10-28 — Auth layout: "Continue with Google" now sits at the top of the login and signup cards, above the email fields, with an "or continue with email" divider beneath it. Email sign-in stays the visual second option without being hidden.
+
+2026-10-30 — Item 16: signed-in users can mark reviews helpful; totals display on review cards, repeat votes toggle, and self-voting is blocked.

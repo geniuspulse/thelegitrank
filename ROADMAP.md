@@ -17,10 +17,10 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 12. Admin analytics dashboard (signups, reviews, flags/day)
 - [skip] 13. Two-factor auth for admin accounts — needs owner decision: email/SMS provider for the one-time codes
 - [x] 14. Audit log of admin actions
-- [ ] 15. Legal pages: Terms, Privacy, Cookies
+- [skip] 15. Legal pages: Terms, Privacy, Cookies — needs owner decision: approve legally accurate policy terms and data-handling commitments
 
 ## P1 — Reviews & engagement
-- [ ] 16. Helpful votes on reviews ("X found this helpful")
+- [x] 16. Helpful votes on reviews ("X found this helpful")
 - [ ] 17. Notify owners when a review needs response
 - [ ] 18. Review edit history with timestamps
 - [ ] 19. Reviewer achievement levels (Top Reviewer, Verified Buyer)

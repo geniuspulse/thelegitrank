@@ -253,6 +253,7 @@ async function handle(req, res) {
       const page = Math.max(1, parseInt(q.get('page'), 10) || 1);
       const per = 10;
       const reviews = dbm.reviewsForBusiness(b.id, per, (page - 1) * per);
+      if (user) { const voted = new Set(dbm.db.prepare('SELECT review_id FROM review_helpful_votes WHERE user_id = ?').all(user.id).map(x => x.review_id)); reviews.forEach(r => { r.helpful_by_me = voted.has(r.id); }); }
       const pages = Math.max(1, Math.ceil(b.review_count / per));
       const myRev = user ? dbm.myReview(b.id, user.id) : null;
       return html(res, 200, views.businessPage({
@@ -558,6 +559,20 @@ async function handle(req, res) {
 
   // ---------- POST routes ----------
   if (method === 'POST') {
+    const helpfulMatch = pathname.match(/^\/review\/(\d+)\/helpful$/);
+    if (helpfulMatch) {
+      const reviewId = Number(helpfulMatch[1]);
+      const review = dbm.db.prepare('SELECT id, user_id, hidden FROM reviews WHERE id = ?').get(reviewId);
+      if (!review || review.hidden) return html(res, 404, views.notFound({ user }));
+      if (!user) return redirect(res, `/login?next=/review/${reviewId}/helpful`);
+      if (user.id !== review.user_id) {
+        const voted = dbm.db.prepare('SELECT 1 FROM review_helpful_votes WHERE review_id = ? AND user_id = ?').get(reviewId, user.id);
+        if (voted) dbm.db.prepare('DELETE FROM review_helpful_votes WHERE review_id = ? AND user_id = ?').run(reviewId, user.id);
+        else dbm.db.prepare('INSERT INTO review_helpful_votes (review_id, user_id, created_at) VALUES (?,?,?)').run(reviewId, user.id, nowIso());
+      }
+      const biz = dbm.db.prepare('SELECT slug FROM businesses WHERE id = (SELECT business_id FROM reviews WHERE id = ?)').get(reviewId);
+      return redirect(res, biz ? `/business/${biz.slug}` : '/');
+    }
     // delete own review
     const delM = pathname.match(/^\/review\/(\d+)\/delete$/);
     if (delM) {
