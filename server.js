@@ -418,7 +418,8 @@ async function handle(req, res) {
       dbm.db.prepare('SELECT review_id, status FROM appeals WHERE user_id = ? ORDER BY created_at DESC').all(user.id)
         .forEach(a => { if (!(a.review_id in appeals)) appeals[a.review_id] = a; });
       return html(res, 200, views.dashboard({
-        user, reviews: dbm.userReviews(user.id), owned, pendingV, hidden, appeals, msg: q.get('msg'),
+        user, reviews: dbm.userReviews(user.id), owned, pendingV, hidden, appeals,
+        responseNeeded: dbm.reviewsNeedingOwnerResponse(user.id), msg: q.get('msg'),
       }));
     }
 

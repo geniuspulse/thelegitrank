@@ -147,6 +147,8 @@ const DICT = {
   'dash.title': ['My account', 'Akaunti yanga'],
   'dash.myReviews': ['My reviews', 'Ndemanga zanga'],
   'dash.myBusinesses': ['My businesses', 'Mabizinesi anga'],
+  'dash.needsResponse': ['Reviews waiting for your response', 'Ndemanga zikudikira yankho lanu'],
+  'dash.respondNow': ['Respond now', 'Yankhani tsopano'],
   'dash.noReviews': ['You have not written any reviews yet.', 'Sanasiye ndemanga palibe.'],
   'dash.noBusinesses': ['No businesses claimed yet.', 'Palibe mabizinesi opezeka.'],
   'dash.verified': ['Verified', 'Wotsimikizika'],

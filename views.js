@@ -551,7 +551,7 @@ function claimPage({ user, b, err }) {
 }
 
 // ---------- DASHBOARD ----------
-function dashboard({ user, reviews, owned, pendingV, hidden, appeals, msg }) {
+function dashboard({ user, reviews, owned, pendingV, hidden, appeals, responseNeeded = [], msg }) {
   const initials = esc((user.name || 'A').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
   const since = new Date(user.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
   const verifiedCount = owned.filter(b => b.verified).length;
@@ -613,6 +613,15 @@ function dashboard({ user, reviews, owned, pendingV, hidden, appeals, msg }) {
   </section>
   <section class="pad"><div class="wrap">
     ${flash(msg || '')}
+    ${responseNeeded.length ? `
+    <section class="card col" role="status" aria-live="polite">
+      <h2 class="dash-h">${t('dash.needsResponse')} (${responseNeeded.length})</h2>
+      ${responseNeeded.map(r => `<div class="row-card">
+        <div><b>${esc(r.biz_name)}</b> · <span class="stars-a">${stars(r.rating)}</span>
+          <p class="small muted">${esc(r.title || (r.body || '').slice(0, 120))}</p></div>
+        <a class="btn-mini btn-mini-g" href="/business/${esc(r.biz_slug)}/manage">${t('dash.respondNow')} →</a>
+      </div>`).join('')}
+    </section>` : ''}
     <h2 class="dash-h">${t('dash.myReviews')}</h2>
     ${reviews.length ? revRows : `<div class="empty"><p class="muted">${t('dash.noReviews')}</p><a class="btn-mini btn-mini-g" href="/search">${t('nav.browse')} →</a></div>`}
     ${hidden.length ? `

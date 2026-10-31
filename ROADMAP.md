@@ -21,7 +21,7 @@ Daily build automation works top-down. Mark done with `[x]`.
 
 ## P1 — Reviews & engagement
 - [x] 16. Helpful votes on reviews ("X found this helpful")
-- [ ] 17. Notify owners when a review needs response
+- [x] 17. Notify owners when a review needs response
 - [ ] 18. Review edit history with timestamps
 - [ ] 19. Reviewer achievement levels (Top Reviewer, Verified Buyer)
 - [ ] 20. Auto sentiment tags per business (fast delivery, quality, scam alert)

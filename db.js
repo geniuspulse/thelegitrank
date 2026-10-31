@@ -229,6 +229,16 @@ function userReviews(uid) {
 function ownedBusinesses(uid) {
   return db.prepare(`SELECT ${BIZ_AGG} FROM businesses b WHERE (b.owner_user_id = ? OR b.created_by = ?) AND b.status = 'active' ORDER BY b.created_at DESC`).all(uid, uid);
 }
+function reviewsNeedingOwnerResponse(uid, limit = 10) {
+  return db.prepare(`
+    SELECT r.id AS review_id, r.title, r.body, r.rating, r.created_at,
+      b.name AS biz_name, b.slug AS biz_slug
+    FROM reviews r JOIN businesses b ON b.id = r.business_id
+    WHERE (b.owner_user_id = ? OR b.created_by = ?)
+      AND b.status = 'active' AND r.hidden = 0
+      AND (r.response_text IS NULL OR TRIM(r.response_text) = '')
+    ORDER BY r.created_at DESC LIMIT ?`).all(uid, uid, limit);
+}
 function platformStats() {
   return {
     businesses: db.prepare(`SELECT COUNT(*) AS n FROM businesses WHERE status='active'`).get().n,
@@ -504,7 +514,7 @@ module.exports = {
   db, init, now, hashPassword, verifyPassword, slugify, uniqueSlug,
   getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses,
   reviewsForBusiness, ratingDistribution, myReview, userReviews,
-  ownedBusinesses, platformStats,
+  ownedBusinesses, reviewsNeedingOwnerResponse, platformStats,
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
   addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,
   settingGet, settingSet, listCategories, myAppealFor, saveReceipt, receiptFile, findBusinessDuplicates,

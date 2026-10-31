@@ -20,3 +20,5 @@
 2026-10-28 — Auth layout: "Continue with Google" now sits at the top of the login and signup cards, above the email fields, with an "or continue with email" divider beneath it. Email sign-in stays the visual second option without being hidden.
 
 2026-10-30 — Item 16: signed-in users can mark reviews helpful; totals display on review cards, repeat votes toggle, and self-voting is blocked.
+
+2026-10-31 — Item 17: owner dashboard now flags visible, unanswered reviews for claimed or self-added businesses, with a direct link to reply in business management (no email credentials or external service required).
