@@ -249,6 +249,16 @@ function reviewItem(r, isOwner, user) {
     ${r.title ? `<h4>${esc(r.title)}</h4>` : ''}
     ${r.photo_path ? `<a href="/photo/${r.id}" target="_blank"><img class="rev-photo" src="/photo/${r.id}" alt="review photo" loading="lazy"></a>` : ''}
     <p>${esc(r.body)}</p>
+    ${r.edit_count ? `
+    <details class="edit-history">
+      <summary>${t('biz.editHistory')} · ${r.edit_count}</summary>
+      ${(r.history || []).map(h => `
+      <div class="history-entry">
+        <div class="history-meta muted">${t('biz.prevVersion')} — ${new Date(h.edited_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })} ${stars(h.rating)}</div>
+        ${h.title ? `<div><b>${esc(h.title)}</b></div>` : ''}
+        <p>${esc(h.body)}</p>
+      </div>`).join('')}
+    </details>` : ''}
     <form class="helpful-form" method="post" action="/review/${r.id}/helpful"><button class="btn btn-small" type="submit" ${user && user.id === r.user_id ? 'disabled title="You cannot vote on your own review"' : ''}>${r.helpful_by_me ? '✓ Helpful' : '👍 Helpful'} · ${r.helpful_count || 0}</button></form>
     ${r.response_text ? `
       <div class="resp-block">

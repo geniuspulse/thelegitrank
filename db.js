@@ -139,8 +139,17 @@ function migrate() {
     id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
+  CREATE TABLE IF NOT EXISTS review_edit_history(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    review_id INTEGER NOT NULL,
+    rating INTEGER NOT NULL,
+    title TEXT DEFAULT '',
+    body TEXT NOT NULL,
+    edited_at TEXT NOT NULL
+  );
   CREATE INDEX IF NOT EXISTS idx_reports_biz ON reports(business_id);
   CREATE INDEX IF NOT EXISTS idx_audit ON audit_log(created_at);
+  CREATE INDEX IF NOT EXISTS idx_reh ON review_edit_history(review_id);
   `);
   if (db.prepare('SELECT COUNT(*) AS n FROM categories').get().n === 0) {
     ['Fashion','Electronics','Home & Living','Food & Restaurant','Beauty','Services','Education','Retail','Travel','Transport','Health','Other']
@@ -206,7 +215,8 @@ function topBusinesses(limit = 6) {
 function reviewsForBusiness(bid, limit = 10, offset = 0) {
   return db.prepare(`
     SELECT r.*, u.name AS author_name,
-      (SELECT COUNT(*) FROM review_helpful_votes v WHERE v.review_id = r.id) AS helpful_count
+      (SELECT COUNT(*) FROM review_helpful_votes v WHERE v.review_id = r.id) AS helpful_count,
+      (SELECT COUNT(*) FROM review_edit_history h WHERE h.review_id = r.id) AS edit_count
     FROM reviews r JOIN users u ON u.id = r.user_id
     WHERE r.business_id = ? AND r.hidden = 0
     ORDER BY r.created_at DESC LIMIT ? OFFSET ?`).all(bid, limit, offset);
@@ -454,6 +464,7 @@ function deleteReviewCascade(reviewId) {
   }
   db.prepare('DELETE FROM appeals WHERE review_id = ?').run(reviewId);
   db.prepare('DELETE FROM reports WHERE review_id = ?').run(reviewId);
+  db.prepare('DELETE FROM review_edit_history WHERE review_id = ?').run(reviewId);
   db.prepare('DELETE FROM reviews WHERE id = ?').run(reviewId);
   return true;
 }
@@ -509,6 +520,13 @@ function findBusinessDuplicates(name, city) {
 function myAppealFor(reviewId) {
   return db.prepare(`SELECT * FROM appeals WHERE review_id = ? ORDER BY created_at DESC LIMIT 1`).get(reviewId);
 }
+function reviewHistory(reviewId) {
+  return db.prepare('SELECT rating, title, body, edited_at FROM review_edit_history WHERE review_id = ? ORDER BY edited_at DESC').all(reviewId);
+}
+function addReviewEditHistory(reviewId, rating, title, body) {
+  db.prepare('INSERT INTO review_edit_history (review_id, rating, title, body, edited_at) VALUES (?,?,?,?,?)')
+    .run(reviewId, rating, title, body, now());
+}
 
 module.exports = {
   db, init, now, hashPassword, verifyPassword, slugify, uniqueSlug,
@@ -517,6 +535,6 @@ module.exports = {
   ownedBusinesses, reviewsNeedingOwnerResponse, platformStats,
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
   addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,
-  settingGet, settingSet, listCategories, myAppealFor, saveReceipt, receiptFile, findBusinessDuplicates,
+  settingGet, settingSet, listCategories, myAppealFor, reviewHistory, addReviewEditHistory, saveReceipt, receiptFile, findBusinessDuplicates,
   savePhoto, photoFile, autoFlagReasons, saveBizLogo, bizLogoFile, deleteReviewCascade,
 };

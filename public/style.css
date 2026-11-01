@@ -374,3 +374,11 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
 .foot-cats a:hover{color:#fff;text-decoration:underline}
 
 .helpful-form{margin-top:12px}.helpful-form button{padding:6px 10px;font-size:.82rem}.helpful-form button:disabled{opacity:.6;cursor:not-allowed}
+
+/* review edit history */
+.edit-history{margin:10px 0 4px;font-size:.88rem}
+.edit-history summary{cursor:pointer;color:var(--muted);font-weight:600}
+.edit-history summary:hover{color:var(--ink)}
+.history-entry{margin-top:10px;padding:10px 12px;border-left:3px solid var(--line);background:var(--slate);border-radius:0 12px 12px 0}
+.history-entry p{margin-top:4px;color:var(--muted)}
+.history-meta{font-size:.8rem}

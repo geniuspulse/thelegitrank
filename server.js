@@ -254,6 +254,7 @@ async function handle(req, res) {
       const per = 10;
       const reviews = dbm.reviewsForBusiness(b.id, per, (page - 1) * per);
       if (user) { const voted = new Set(dbm.db.prepare('SELECT review_id FROM review_helpful_votes WHERE user_id = ?').all(user.id).map(x => x.review_id)); reviews.forEach(r => { r.helpful_by_me = voted.has(r.id); }); }
+      reviews.forEach(r => { if (r.edit_count) r.history = dbm.reviewHistory(r.id); });
       const pages = Math.max(1, Math.ceil(b.review_count / per));
       const myRev = user ? dbm.myReview(b.id, user.id) : null;
       return html(res, 200, views.businessPage({
@@ -700,8 +701,11 @@ async function handle(req, res) {
       };
       const saveRcpt = (id) => saveMedia(id, 'receipt', dbm.saveReceipt);
       if (existing) {
-        dbm.db.prepare('UPDATE reviews SET rating=?, title=?, body=?, updated_at=? WHERE id = ?')
-          .run(rating, title, text, nowIso(), existing.id);
+        if (existing.rating !== rating || existing.title !== title || existing.body !== text) {
+          dbm.addReviewEditHistory(existing.id, existing.rating, existing.title, existing.body);
+          dbm.db.prepare('UPDATE reviews SET rating=?, title=?, body=?, updated_at=? WHERE id = ?')
+            .run(rating, title, text, nowIso(), existing.id);
+        }
         saveRcpt(existing.id);
         saveMedia(existing.id, 'photo', dbm.savePhoto);
         return redirect(res, `/business/${m[1]}?msg=reviewUpdated`);
