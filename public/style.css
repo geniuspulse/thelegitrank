@@ -314,6 +314,11 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
 .dup-box b{display:block;margin-bottom:6px}
 .dup-box ul{margin:6px 0 10px 18px}
 .vp-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(0,168,107,.12);color:#027a53;border:1px solid rgba(0,168,107,.3);font-size:.7rem;font-weight:700;border-radius:999px;padding:3px 10px;margin-left:8px}
+.ach-chip{display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:700;border-radius:999px;padding:3px 10px;margin-left:8px;white-space:nowrap}
+.ach-top{background:rgba(255,184,0,.14);color:#8a6400;border:1px solid rgba(255,184,0,.45)}
+.ach-vb{background:rgba(0,168,107,.12);color:#027a53;border:1px solid rgba(0,168,107,.3)}
+.ach-row{margin-top:8px}
+.ach-row .ach-chip{margin-left:0;margin-right:8px}
 
 /* review photos */
 .rev-photo{width:100%;max-width:320px;border-radius:12px;border:1px solid var(--line);display:block;margin:10px 0}

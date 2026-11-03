@@ -22,3 +22,7 @@
 2026-10-30 — Item 16: signed-in users can mark reviews helpful; totals display on review cards, repeat votes toggle, and self-voting is blocked.
 
 2026-10-31 — Item 17: owner dashboard now flags visible, unanswered reviews for claimed or self-added businesses, with a direct link to reply in business management (no email credentials or external service required).
+
+2026-11-03 — Item 18 marked done (shipped Nov 1 but was left unchecked in the roadmap).
+
+2026-11-03 — Item 19: reviewer achievement levels — Top Reviewer (5+ published reviews) and Verified Buyer (at least one admin-confirmed verified purchase) chips now show next to the reviewer's name on review cards and on the reviewer's dashboard; computed live per user, bilingual strings (EN/Chichewa), gold chip for Top Reviewer, green for Verified Buyer.

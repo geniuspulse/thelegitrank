@@ -244,6 +244,8 @@ function reviewItem(r, isOwner, user) {
       <div class="avatar">${esc((r.author_name || 'A').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</div>
       <div class="who"><b>${esc(r.author_name)}</b><span>${new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}${r.updated_at ? ' · ' + t('biz.updated') : ''}</span></div>
       ${r.verified_purchase ? `<span class="vp-chip">✓ ${t('biz.vp')}</span>` : ''}
+      ${r.author_review_count >= 5 ? `<span class="ach-chip ach-top" title="${t('ach.topHint')}">★ ${t('ach.top')}</span>` : ''}
+      ${r.author_vp_count > 0 && !r.verified_purchase ? `<span class="ach-chip ach-vb">✓ ${t('ach.vb')}</span>` : ''}
       <span class="stars-a push">${stars(r.rating)}</span>
     </div>
     ${r.title ? `<h4>${esc(r.title)}</h4>` : ''}
@@ -561,7 +563,7 @@ function claimPage({ user, b, err }) {
 }
 
 // ---------- DASHBOARD ----------
-function dashboard({ user, reviews, owned, pendingV, hidden, appeals, responseNeeded = [], msg }) {
+function dashboard({ user, reviews, owned, pendingV, hidden, appeals, responseNeeded = [], ach = { reviewCount: 0, vpCount: 0, topReviewer: false, verifiedBuyer: false }, msg }) {
   const initials = esc((user.name || 'A').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
   const since = new Date(user.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
   const verifiedCount = owned.filter(b => b.verified).length;
@@ -613,6 +615,10 @@ function dashboard({ user, reviews, owned, pendingV, hidden, appeals, responseNe
       <div>
         <h1>${esc(user.name)}</h1>
         <p class="sub">${esc(user.email)} · ${t('dash.memberSince')} ${since}</p>
+        ${(ach.topReviewer || ach.verifiedBuyer) ? `<p class="ach-row">
+          ${ach.topReviewer ? `<span class="ach-chip ach-top">★ ${t('ach.top')}</span>` : ''}
+          ${ach.verifiedBuyer ? `<span class="ach-chip ach-vb">✓ ${t('ach.vb')}</span>` : ''}
+        </p>` : ''}
       </div>
     </div>
     <div class="wrap dash-stats">

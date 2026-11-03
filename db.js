@@ -216,10 +216,27 @@ function reviewsForBusiness(bid, limit = 10, offset = 0) {
   return db.prepare(`
     SELECT r.*, u.name AS author_name,
       (SELECT COUNT(*) FROM review_helpful_votes v WHERE v.review_id = r.id) AS helpful_count,
-      (SELECT COUNT(*) FROM review_edit_history h WHERE h.review_id = r.id) AS edit_count
+      (SELECT COUNT(*) FROM review_edit_history h WHERE h.review_id = r.id) AS edit_count,
+      (SELECT COUNT(*) FROM reviews x WHERE x.user_id = r.user_id AND x.hidden = 0) AS author_review_count,
+      (SELECT COUNT(*) FROM reviews y WHERE y.user_id = r.user_id AND y.hidden = 0 AND y.verified_purchase = 1) AS author_vp_count
     FROM reviews r JOIN users u ON u.id = r.user_id
     WHERE r.business_id = ? AND r.hidden = 0
     ORDER BY r.created_at DESC LIMIT ? OFFSET ?`).all(bid, limit, offset);
+}
+
+// Reviewer achievement levels (item 19):
+// Top Reviewer — 5 or more published reviews; Verified Buyer — at least one
+// admin-confirmed verified purchase. Both computed live, no extra state.
+function reviewerAchievements(uid) {
+  const row = db.prepare(
+    `SELECT COUNT(*) AS review_count, SUM(CASE WHEN verified_purchase = 1 THEN 1 ELSE 0 END) AS vp_count
+     FROM reviews WHERE user_id = ? AND hidden = 0`).get(uid);
+  return {
+    reviewCount: row.review_count || 0,
+    vpCount: row.vp_count || 0,
+    topReviewer: (row.review_count || 0) >= 5,
+    verifiedBuyer: (row.vp_count || 0) > 0,
+  };
 }
 function ratingDistribution(bid) {
   const rows = db.prepare(`SELECT rating, COUNT(*) AS n FROM reviews WHERE business_id = ? AND hidden = 0 GROUP BY rating`).all(bid);
@@ -532,7 +549,7 @@ module.exports = {
   db, init, now, hashPassword, verifyPassword, slugify, uniqueSlug,
   getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses,
   reviewsForBusiness, ratingDistribution, myReview, userReviews,
-  ownedBusinesses, reviewsNeedingOwnerResponse, platformStats,
+  ownedBusinesses, reviewsNeedingOwnerResponse, platformStats, reviewerAchievements,
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
   addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,
   settingGet, settingSet, listCategories, myAppealFor, reviewHistory, addReviewEditHistory, saveReceipt, receiptFile, findBusinessDuplicates,

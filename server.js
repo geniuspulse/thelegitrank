@@ -420,7 +420,7 @@ async function handle(req, res) {
         .forEach(a => { if (!(a.review_id in appeals)) appeals[a.review_id] = a; });
       return html(res, 200, views.dashboard({
         user, reviews: dbm.userReviews(user.id), owned, pendingV, hidden, appeals,
-        responseNeeded: dbm.reviewsNeedingOwnerResponse(user.id), msg: q.get('msg'),
+        responseNeeded: dbm.reviewsNeedingOwnerResponse(user.id), ach: dbm.reviewerAchievements(user.id), msg: q.get('msg'),
       }));
     }
 
