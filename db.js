@@ -244,6 +244,41 @@ function ratingDistribution(bid) {
   rows.forEach(r => dist[r.rating] = r.n);
   return dist;
 }
+// ---------- auto sentiment tags (roadmap #20) ----------
+// Keyword sentiment over the latest visible reviews — zero dependencies.
+// A positive tag shows when at least SENT_MIN reviews rated 4-5 mention its
+// words; the scam alert shows when at least SENT_MIN reviews rated 1-3 do.
+// English + Chichewa word lists, matched case-insensitively as substrings.
+const SENT_MIN = 2;
+const SENTIMENT_RULES = [
+  { key: 'fast',    words: ['fast', 'quick', 'on time', 'delivered', 'delivery', 'msanga', 'liwiro'] },
+  { key: 'quality', words: ['quality', 'durable', 'sturdy', 'genuine', 'original', 'strong', 'zakukutha'] },
+  { key: 'price',   words: ['cheap', 'affordable', 'fair price', 'good price', 'reasonable', 'otsika mtengo', 'mtengo'] },
+  { key: 'service', words: ['friendly', 'helpful', 'responsive', 'support', 'service', 'professional', 'kuthandiza'] },
+  { key: 'scam',    words: ['scam', 'fraud', 'fake', 'thief', 'stole', 'stolen', 'duped', 'con ', 'anaba', 'bodza'], neg: true },
+];
+
+function bizSentimentTags(bid) {
+  const rows = db.prepare(
+    `SELECT rating, LOWER(COALESCE(title, '') || ' ' || COALESCE(body, '')) AS text
+     FROM reviews WHERE business_id = ? AND hidden = 0 ORDER BY created_at DESC LIMIT 100`).all(bid);
+  const counts = {};
+  SENTIMENT_RULES.forEach(r => { counts[r.key] = 0; });
+  rows.forEach(r => {
+    SENTIMENT_RULES.forEach(rule => {
+      if (rule.neg ? r.rating > 3 : r.rating < 4) return;
+      if (rule.words.some(w => r.text.includes(w))) counts[rule.key] += 1;
+    });
+  });
+  const tags = [];
+  if ((counts.scam || 0) >= SENT_MIN) tags.push({ key: 'scam', count: counts.scam });
+  ['fast', 'quality', 'price', 'service']
+    .filter(k => (counts[k] || 0) >= SENT_MIN)
+    .sort((a, b) => counts[b] - counts[a])
+    .forEach(k => tags.push({ key: k, count: counts[k] }));
+  return tags;
+}
+
 function myReview(bid, uid) {
   return db.prepare('SELECT * FROM reviews WHERE business_id = ? AND user_id = ?').get(bid, uid);
 }
@@ -548,7 +583,7 @@ function addReviewEditHistory(reviewId, rating, title, body) {
 module.exports = {
   db, init, now, hashPassword, verifyPassword, slugify, uniqueSlug,
   getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses,
-  reviewsForBusiness, ratingDistribution, myReview, userReviews,
+  reviewsForBusiness, ratingDistribution, bizSentimentTags, myReview, userReviews,
   ownedBusinesses, reviewsNeedingOwnerResponse, platformStats, reviewerAchievements,
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
   addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,

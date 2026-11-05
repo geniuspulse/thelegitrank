@@ -261,6 +261,7 @@ async function handle(req, res) {
         user, b, reviews, dist: dbm.ratingDistribution(b.id),
         page, pages, myRev, alreadyReviewed: !!myRev, msg: q.get('msg'),
         canEdit: canEditBiz(user, b),
+        tags: dbm.bizSentimentTags(b.id),
       }));
     }
 

@@ -387,3 +387,9 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
 .history-entry{margin-top:10px;padding:10px 12px;border-left:3px solid var(--line);background:var(--slate);border-radius:0 12px 12px 0}
 .history-entry p{margin-top:4px;color:var(--muted)}
 .history-meta{font-size:.8rem}
+
+/* auto sentiment tags (roadmap #20) */
+.sent-tags{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+.sent-head{font-size:.8rem}
+.sent-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:999px;font-size:.78rem;font-weight:700;background:rgba(0,168,107,.12);color:var(--emerald)}
+.sent-tag.warn{background:rgba(220,38,38,.12);color:#dc2626}

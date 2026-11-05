@@ -270,7 +270,7 @@ function reviewItem(r, isOwner, user) {
   </article>`;
 }
 
-function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyReviewed, msg, canEdit }) {
+function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyReviewed, msg, canEdit, tags }) {
   const total = b.review_count;
   const bars = [5,4,3,2,1].map(n => `
     <div class="dist-row">
@@ -320,6 +320,11 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
           ${b.verified
             ? `<span class="v-chip big">✓ ${t('biz.verified')}</span><p class="v-note">${t('biz.verifiedNote')}</p>`
             : `<span class="nv-chip">${t('biz.notVerified')}</span>`}
+          ${(tags && tags.length) ? `
+          <div class="sent-tags">
+            <span class="sent-head muted">${t('biz.sentHead')}:</span>
+            ${tags.map(tg => `<span class="sent-tag${tg.key === 'scam' ? ' warn' : ''}">${tg.key === 'scam' ? '⚠' : '✓'} ${t('tag.' + tg.key)} · ${tg.count}</span>`).join('')}
+          </div>` : ''}
         </div>
       </div>
       <div class="biz-hero-cta">
