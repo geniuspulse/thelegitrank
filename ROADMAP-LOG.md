@@ -26,3 +26,5 @@
 2026-11-03 — Item 18 marked done (shipped Nov 1 but was left unchecked in the roadmap).
 
 2026-11-03 — Item 19: reviewer achievement levels — Top Reviewer (5+ published reviews) and Verified Buyer (at least one admin-confirmed verified purchase) chips now show next to the reviewer's name on review cards and on the reviewer's dashboard; computed live per user, bilingual strings (EN/Chichewa), gold chip for Top Reviewer, green for Verified Buyer.
+
+- 2026-11-05 — #20 Auto sentiment tags — business pages now show 'What buyers say' chips (Fast delivery, Good quality, Fair prices, Friendly service, red Scam alert) derived by keyword scan of recent 4-5★ / 1-3★ reviews; each tag needs 2+ mentions. Live via Coolify deploy 50adb6e, verified 200 + served CSS.

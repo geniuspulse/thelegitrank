@@ -24,7 +24,7 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 17. Notify owners when a review needs response
 - [x] 18. Review edit history with timestamps
 - [x] 19. Reviewer achievement levels (Top Reviewer, Verified Buyer)
-- [ ] 20. Auto sentiment tags per business (fast delivery, quality, scam alert)
+- [x] 20. Auto sentiment tags per business (fast delivery, quality, scam alert)
 - [ ] 21. Keyword cloud ("most mentioned: delivery")
 - [ ] 22. Share buttons: WhatsApp, X, Facebook
 - [ ] 23. Invite friends to review a business
