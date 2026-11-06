@@ -274,6 +274,7 @@ const DICT = {
   'mg.current': ['Current', 'Lilipo tsopano'],
   'mg.save': ['Save profile', 'Sungani profaile'],
   'biz.sentHead': ['What buyers say', 'Mawu a ogula'],
+  'biz.kwHead': ['Most mentioned', 'Zambiri kutchulidwa'],
   'tag.fast': ['Fast delivery', 'Kufika msanga'],
   'tag.quality': ['Good quality', 'Zabwino'],
   'tag.price': ['Fair prices', 'Mitengo yabwino'],

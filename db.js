@@ -258,6 +258,35 @@ const SENTIMENT_RULES = [
   { key: 'scam',    words: ['scam', 'fraud', 'fake', 'thief', 'stole', 'stolen', 'duped', 'con ', 'anaba', 'bodza'], neg: true },
 ];
 
+// ---------- keyword cloud (roadmap #21) ----------
+// "Most mentioned" words across the latest visible reviews. Stopwords
+// (English + Chichewa glue words) are dropped so the cloud shows real
+// topics — delivery, prices, packaging — not sentence filler.
+const KW_MIN = 2;   // a word needs at least 2 mentions to appear
+const KW_TOP = 8;   // show at most this many keywords
+const KW_STOP = new Set(('the a an and or but if so as at to of in on for with is are was were be been this that these those it its ' +
+  'i me my we our you your they them their he she his her not no yes very really just only also too more most much many ' +
+  'there here when what which who how why all any can will would should could have has had do does did get got had out ' +
+  'from about after before over under than then because while some other every each then now after was were again still ' +
+  'ndi a ana ayi ali onse ambiri kwambiri zambiri komanso chifukwa choncho kapena koma ndithu koma abale please ' +
+  'very really good bad nice ok okay one two three four five star stars review reviews rating place shop store').split(/\s+/));
+function bizKeywordCloud(bid) {
+  const rows = db.prepare(
+    `SELECT LOWER(COALESCE(title, '') || ' ' || COALESCE(body, '')) AS text
+     FROM reviews WHERE business_id = ? AND hidden = 0 ORDER BY created_at DESC LIMIT 200`).all(bid);
+  const counts = {};
+  rows.forEach(r => {
+    (r.text.match(/[a-z]+/g) || []).forEach(w => {
+      if (w.length < 4 || KW_STOP.has(w)) return;
+      counts[w] = (counts[w] || 0) + 1;
+    });
+  });
+  return Object.keys(counts)
+    .filter(w => counts[w] >= KW_MIN)
+    .sort((a, b) => counts[b] - counts[a] || a.localeCompare(b))
+    .slice(0, KW_TOP)
+    .map(w => ({ word: w, count: counts[w] }));
+}
 function bizSentimentTags(bid) {
   const rows = db.prepare(
     `SELECT rating, LOWER(COALESCE(title, '') || ' ' || COALESCE(body, '')) AS text
@@ -583,7 +612,7 @@ function addReviewEditHistory(reviewId, rating, title, body) {
 module.exports = {
   db, init, now, hashPassword, verifyPassword, slugify, uniqueSlug,
   getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses,
-  reviewsForBusiness, ratingDistribution, bizSentimentTags, myReview, userReviews,
+  reviewsForBusiness, ratingDistribution, bizSentimentTags, bizKeywordCloud, myReview, userReviews,
   ownedBusinesses, reviewsNeedingOwnerResponse, platformStats, reviewerAchievements,
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
   addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,

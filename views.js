@@ -270,7 +270,13 @@ function reviewItem(r, isOwner, user) {
   </article>`;
 }
 
-function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyReviewed, msg, canEdit, tags }) {
+// Roadmap #21 — chip size scales from the top keyword down, 0.78rem to 1.25rem.
+function kwChipSize(count, max) {
+  const scale = max > 1 ? (count - 1) / (max - 1) : 0;
+  return (0.78 + Math.max(0, Math.min(1, scale)) * 0.47).toFixed(2);
+}
+
+function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyReviewed, msg, canEdit, tags, kw }) {
   const total = b.review_count;
   const bars = [5,4,3,2,1].map(n => `
     <div class="dist-row">
@@ -324,6 +330,11 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
           <div class="sent-tags">
             <span class="sent-head muted">${t('biz.sentHead')}:</span>
             ${tags.map(tg => `<span class="sent-tag${tg.key === 'scam' ? ' warn' : ''}">${tg.key === 'scam' ? '⚠' : '✓'} ${t('tag.' + tg.key)} · ${tg.count}</span>`).join('')}
+          </div>` : ''}
+          ${(kw && kw.length) ? `
+          <div class="kw-cloud">
+            <span class="sent-head muted">${t('biz.kwHead')}:</span>
+            ${kw.map(k => `<a class="kw-chip" href="/search?q=${encodeURIComponent(k.word)}" style="font-size:${kwChipSize(k.count, kw[0].count)}rem">${esc(k.word)} <b>${k.count}</b></a>`).join('')}
           </div>` : ''}
         </div>
       </div>

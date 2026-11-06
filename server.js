@@ -262,6 +262,7 @@ async function handle(req, res) {
         page, pages, myRev, alreadyReviewed: !!myRev, msg: q.get('msg'),
         canEdit: canEditBiz(user, b),
         tags: dbm.bizSentimentTags(b.id),
+        kw: dbm.bizKeywordCloud(b.id),
       }));
     }
 
