@@ -275,6 +275,7 @@ const DICT = {
   'mg.save': ['Save profile', 'Sungani profaile'],
   'biz.sentHead': ['What buyers say', 'Mawu a ogula'],
   'biz.kwHead': ['Most mentioned', 'Zambiri kutchulidwa'],
+  'biz.share': ['Share', 'Gawani'],
   'tag.fast': ['Fast delivery', 'Kufika msanga'],
   'tag.quality': ['Good quality', 'Zabwino'],
   'tag.price': ['Fair prices', 'Mitengo yabwino'],

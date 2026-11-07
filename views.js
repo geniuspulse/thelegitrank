@@ -295,6 +295,18 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
     ? ''
     : `<a class="claim-link" href="/claim/${esc(b.slug)}">${t('biz.claim')}</a> <a class="claim-link" href="/report?type=scam&biz=${esc(b.slug)}">${t('biz.report')}</a>`;
 
+  // Roadmap #22 — share buttons. Plain <a> links only: no JS, so the page's
+  // strict CSP is untouched; the prefilled message carries the canonical URL.
+  const shareUrl = SEO.abs(`/business/${b.slug}`);
+  const shareMsg = `${b.name} — real buyer reviews on The Legit Rank`;
+  const shareRow = `
+      <div class="share-row">
+        <span class="sent-head muted">${t('biz.share')}:</span>
+        <a class="share-btn wa" href="https://wa.me/?text=${encodeURIComponent(shareMsg + ' ' + shareUrl)}" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="share-btn x" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMsg)}&amp;url=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener">X</a>
+        <a class="share-btn fb" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener">Facebook</a>
+      </div>`;
+
   const seo = {
     title: `${b.name} reviews — ${b.city}, ${b.country}`,
     desc: b.review_count
@@ -345,6 +357,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
         ${cta}
         ${canEdit ? `<a class="btn-mini" href="/business/${esc(b.slug)}/manage">${t('mg.manage')}</a>` : ''}
         ${ownerBar}
+        ${shareRow}
       </div>
       ${b.description ? `<p class="biz-desc">${esc(b.description)}</p>` : ''}
       ${(b.website || b.phone) ? `
