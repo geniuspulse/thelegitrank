@@ -27,7 +27,7 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 20. Auto sentiment tags per business (fast delivery, quality, scam alert)
 - [x] 21. Keyword cloud ("most mentioned: delivery")
 - [x] 22. Share buttons: WhatsApp, X, Facebook
-- [ ] 23. Invite friends to review a business
+- [x] 23. Invite friends to review a business
 - [ ] 24. Follow a business — new-review alerts
 - [ ] 25. Milestone badges for businesses (10, 50, 100 reviews)
 - [ ] 26. Review deep-link URLs per review
