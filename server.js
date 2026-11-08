@@ -263,6 +263,7 @@ async function handle(req, res) {
         canEdit: canEditBiz(user, b),
         tags: dbm.bizSentimentTags(b.id),
         kw: dbm.bizKeywordCloud(b.id),
+        invites: dbm.inviteCount(b.id),
       }));
     }
 
@@ -328,6 +329,17 @@ async function handle(req, res) {
       if (!b) return html(res, 404, views.notFound({ user }));
       if (!user) return redirect(res, `/login?next=/claim/${m[1]}`);
       return html(res, 200, views.claimPage({ user, b }));
+    }
+
+    // Roadmap #23 — invite friends to review: /invite/<slug> logs the visit
+    // (no login needed), then lands the friend on the business page with a
+    // welcome notice pointing at the review form.
+    m = pathname.match(/^\/invite\/([a-z0-9-]+)$/);
+    if (m) {
+      const b = dbm.getBusinessBySlug(m[1]);
+      if (!b) return html(res, 404, views.notFound({ user }));
+      dbm.logInviteClick(b.id);
+      return redirect(res, `/business/${b.slug}?msg=invited`);
     }
 
     if (pathname === '/auth/google') {

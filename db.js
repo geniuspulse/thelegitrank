@@ -96,6 +96,13 @@ function init() {
 
 function migrate() {
   db.exec(`CREATE TABLE IF NOT EXISTS review_helpful_votes (review_id INTEGER NOT NULL, user_id INTEGER NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (review_id, user_id))`);
+  // Roadmap #23 — invite friends to review: log every opened invite link.
+  db.exec(`CREATE TABLE IF NOT EXISTS invite_clicks(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    business_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+  )`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_inv_biz ON invite_clicks(business_id)`);
   const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map(c => c.name);
   if (!cols('users').includes('status')) db.exec(`ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`);
   const rc = cols('reviews');
@@ -609,6 +616,13 @@ function addReviewEditHistory(reviewId, rating, title, body) {
     .run(reviewId, rating, title, body, now());
 }
 
+function logInviteClick(bizId) {
+  db.prepare('INSERT INTO invite_clicks (business_id, created_at) VALUES (?,?)').run(bizId, now());
+}
+function inviteCount(bizId) {
+  return db.prepare('SELECT COUNT(*) AS n FROM invite_clicks WHERE business_id = ?').get(bizId).n;
+}
+
 module.exports = {
   db, init, now, hashPassword, verifyPassword, slugify, uniqueSlug,
   getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses,
@@ -618,4 +632,5 @@ module.exports = {
   addReport, allAdminReviews, reviewReports, listAppeals, mergeBusinesses, dailyCounts,
   settingGet, settingSet, listCategories, myAppealFor, reviewHistory, addReviewEditHistory, saveReceipt, receiptFile, findBusinessDuplicates,
   savePhoto, photoFile, autoFlagReasons, saveBizLogo, bizLogoFile, deleteReviewCascade,
+  logInviteClick, inviteCount,
 };

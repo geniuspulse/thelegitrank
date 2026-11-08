@@ -110,6 +110,7 @@ function flash(msg) {
     passUpdated: tRaw('dash.passUpdated'), passWrong: tRaw('dash.passWrong'),
     noPerm: tRaw('msg.noPerm'), respRemoved: tRaw('mg.respRemoved'),
     profileSaved: tRaw('msg.profileSaved'),
+    invited: tRaw('msg.invited'),
   }[msg];
   if (!text) return '';
   return `<div class="wrap"><div class="flash ${m}">${esc(text)}</div></div>`;
@@ -276,7 +277,7 @@ function kwChipSize(count, max) {
   return (0.78 + Math.max(0, Math.min(1, scale)) * 0.47).toFixed(2);
 }
 
-function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyReviewed, msg, canEdit, tags, kw }) {
+function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyReviewed, msg, canEdit, tags, kw, invites }) {
   const total = b.review_count;
   const bars = [5,4,3,2,1].map(n => `
     <div class="dist-row">
@@ -305,6 +306,21 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
         <a class="share-btn wa" href="https://wa.me/?text=${encodeURIComponent(shareMsg + ' ' + shareUrl)}" target="_blank" rel="noopener">WhatsApp</a>
         <a class="share-btn x" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMsg)}&amp;url=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener">X</a>
         <a class="share-btn fb" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener">Facebook</a>
+      </div>`;
+
+  // Roadmap #23 — invite friends to review this business. The /invite/<slug>
+  // link logs the visit and lands the friend on the review CTA. Plain <a>
+  // links only, so the strict CSP stays untouched; the bare URL is shown
+  // too so it can be copied into any chat.
+  const inviteUrl = SEO.abs(`/invite/${b.slug}`);
+  const inviteMsg = `Help buyers shop safe — review ${b.name} on The Legit Rank`;
+  const inviteRow = `
+      <div class="invite-row">
+        <span class="sent-head muted">${t('biz.invite')}:</span>
+        <a class="share-btn wa" href="https://wa.me/?text=${encodeURIComponent(inviteMsg + ' ' + inviteUrl)}" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="share-btn x" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(inviteMsg)}&amp;url=${encodeURIComponent(inviteUrl)}" target="_blank" rel="noopener">X</a>
+        <span class="invite-link">${inviteUrl}</span>
+        ${invites ? `<span class="invite-n muted">${t('biz.inviteOpened')}: ${invites}</span>` : ''}
       </div>`;
 
   const seo = {
@@ -358,6 +374,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
         ${canEdit ? `<a class="btn-mini" href="/business/${esc(b.slug)}/manage">${t('mg.manage')}</a>` : ''}
         ${ownerBar}
         ${shareRow}
+        ${inviteRow}
       </div>
       ${b.description ? `<p class="biz-desc">${esc(b.description)}</p>` : ''}
       ${(b.website || b.phone) ? `
