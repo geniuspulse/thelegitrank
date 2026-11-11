@@ -257,6 +257,10 @@ async function handle(req, res) {
       reviews.forEach(r => { if (r.edit_count) r.history = dbm.reviewHistory(r.id); });
       const pages = Math.max(1, Math.ceil(b.review_count / per));
       const myRev = user ? dbm.myReview(b.id, user.id) : null;
+      // Roadmap #24 — visiting the page marks reviews seen BEFORE rendering,
+      // so dashboard alerts only count reviews posted AFTER the last visit.
+      const following = user ? dbm.isFollowing(user.id, b.id) : false;
+      if (following) dbm.markFollowSeen(user.id, b.id);
       return html(res, 200, views.businessPage({
         user, b, reviews, dist: dbm.ratingDistribution(b.id),
         page, pages, myRev, alreadyReviewed: !!myRev, msg: q.get('msg'),
@@ -264,6 +268,7 @@ async function handle(req, res) {
         tags: dbm.bizSentimentTags(b.id),
         kw: dbm.bizKeywordCloud(b.id),
         invites: dbm.inviteCount(b.id),
+        following,
       }));
     }
 
@@ -432,9 +437,11 @@ async function handle(req, res) {
       const appeals = {};
       dbm.db.prepare('SELECT review_id, status FROM appeals WHERE user_id = ? ORDER BY created_at DESC').all(user.id)
         .forEach(a => { if (!(a.review_id in appeals)) appeals[a.review_id] = a; });
+      const followAlerts = dbm.followAlerts(user.id).filter(f => f.new_count > 0);
       return html(res, 200, views.dashboard({
         user, reviews: dbm.userReviews(user.id), owned, pendingV, hidden, appeals,
-        responseNeeded: dbm.reviewsNeedingOwnerResponse(user.id), ach: dbm.reviewerAchievements(user.id), msg: q.get('msg'),
+        responseNeeded: dbm.reviewsNeedingOwnerResponse(user.id), ach: dbm.reviewerAchievements(user.id),
+        followAlerts, msg: q.get('msg'),
       }));
     }
 
@@ -589,6 +596,17 @@ async function handle(req, res) {
       const biz = dbm.db.prepare('SELECT slug FROM businesses WHERE id = (SELECT business_id FROM reviews WHERE id = ?)').get(reviewId);
       return redirect(res, biz ? `/business/${biz.slug}` : '/');
     }
+    // Roadmap #24 — follow/unfollow a business (no body, so handled before readBody)
+    const folM = pathname.match(/^\/business\/([a-z0-9-]+)\/follow$/);
+    if (folM) {
+      const b = dbm.getBusinessBySlug(folM[1]);
+      if (!b) return html(res, 404, views.notFound({ user }));
+      if (!user) return redirect(res, `/login?next=${encodeURIComponent('/business/' + folM[1])}`);
+      const nowFollowing = dbm.toggleFollow(user.id, b.id);
+      if (nowFollowing) dbm.markFollowSeen(user.id, b.id);
+      return redirect(res, `/business/${folM[1]}?msg=${nowFollowing ? 'following' : 'unfollowed'}`);
+    }
+
     // delete own review
     const delM = pathname.match(/^\/review\/(\d+)\/delete$/);
     if (delM) {

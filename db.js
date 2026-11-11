@@ -103,6 +103,17 @@ function migrate() {
     created_at TEXT NOT NULL
   )`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_inv_biz ON invite_clicks(business_id)`);
+  // Roadmap #24 — follow a business: seen_at is bumped whenever the follower
+  // visits the business page, so dashboard alerts only count NEW reviews.
+  db.exec(`CREATE TABLE IF NOT EXISTS follows(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    business_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    seen_at TEXT,
+    UNIQUE(user_id, business_id)
+  )`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_follows_biz ON follows(business_id)`);
   const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map(c => c.name);
   if (!cols('users').includes('status')) db.exec(`ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`);
   const rc = cols('reviews');
@@ -623,6 +634,33 @@ function inviteCount(bizId) {
   return db.prepare('SELECT COUNT(*) AS n FROM invite_clicks WHERE business_id = ?').get(bizId).n;
 }
 
+// Roadmap #24 — follow a business, with new-review alerts on the dashboard.
+function isFollowing(userId, bizId) {
+  return !!db.prepare('SELECT 1 FROM follows WHERE user_id = ? AND business_id = ?').get(userId, bizId);
+}
+function toggleFollow(userId, bizId) {
+  const row = db.prepare('SELECT id FROM follows WHERE user_id = ? AND business_id = ?').get(userId, bizId);
+  if (row) {
+    db.prepare('DELETE FROM follows WHERE id = ?').run(row.id);
+    return false;
+  }
+  db.prepare('INSERT INTO follows (user_id, business_id, created_at) VALUES (?,?,?)').run(userId, bizId, now());
+  return true;
+}
+function markFollowSeen(userId, bizId) {
+  db.prepare('UPDATE follows SET seen_at = ? WHERE user_id = ? AND business_id = ?').run(now(), userId, bizId);
+}
+function followAlerts(userId) {
+  return db.prepare(`
+    SELECT b.slug AS slug, b.name AS name, b.city AS city,
+           SUM(CASE WHEN r.created_at > COALESCE(f.seen_at, f.created_at) THEN 1 ELSE 0 END) AS new_count
+    FROM follows f
+    JOIN businesses b ON b.id = f.business_id
+    LEFT JOIN reviews r ON r.business_id = f.business_id AND r.hidden = 0 AND r.user_id != ?
+    GROUP BY f.id
+    ORDER BY new_count DESC, b.name`).all(userId);
+}
+
 module.exports = {
   db, init, now, hashPassword, verifyPassword, slugify, uniqueSlug,
   getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses,
@@ -633,4 +671,5 @@ module.exports = {
   settingGet, settingSet, listCategories, myAppealFor, reviewHistory, addReviewEditHistory, saveReceipt, receiptFile, findBusinessDuplicates,
   savePhoto, photoFile, autoFlagReasons, saveBizLogo, bizLogoFile, deleteReviewCascade,
   logInviteClick, inviteCount,
+  isFollowing, toggleFollow, markFollowSeen, followAlerts,
 };

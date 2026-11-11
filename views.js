@@ -111,6 +111,7 @@ function flash(msg) {
     noPerm: tRaw('msg.noPerm'), respRemoved: tRaw('mg.respRemoved'),
     profileSaved: tRaw('msg.profileSaved'),
     invited: tRaw('msg.invited'),
+    following: tRaw('msg.following'), unfollowed: tRaw('msg.unfollowed'),
   }[msg];
   if (!text) return '';
   return `<div class="wrap"><div class="flash ${m}">${esc(text)}</div></div>`;
@@ -277,7 +278,7 @@ function kwChipSize(count, max) {
   return (0.78 + Math.max(0, Math.min(1, scale)) * 0.47).toFixed(2);
 }
 
-function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyReviewed, msg, canEdit, tags, kw, invites }) {
+function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyReviewed, msg, canEdit, tags, kw, invites, following }) {
   const total = b.review_count;
   const bars = [5,4,3,2,1].map(n => `
     <div class="dist-row">
@@ -291,6 +292,11 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
         ? `<a class="btn btn-green" href="/business/${esc(b.slug)}/review">${t('biz.editReview')} →</a>`
         : `<a class="btn btn-green" href="/business/${esc(b.slug)}/review">${t('biz.writeReview')} →</a>`)
     : `<a class="btn btn-green" href="/signup?next=${encodeURIComponent('/business/' + b.slug + '/review')}">${t('biz.writeReview')} →</a>`;
+
+  // Roadmap #24 — follow a business: plain form POST, toggles follow state.
+  const followCta = user
+    ? `<form class="follow-form" method="post" action="/business/${esc(b.slug)}/follow"><button class="btn-mini ${following ? '' : 'btn-mini-g'}" type="submit">${following ? t('biz.following') : '+ ' + t('biz.follow')}</button></form>`
+    : `<a class="btn-mini" href="/login?next=${encodeURIComponent('/business/' + b.slug)}">${t('biz.follow')}</a>`;
 
   const ownerBar = b.owner_user_id
     ? ''
@@ -372,7 +378,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
           : `<div class="biz-score muted">${t('biz.noReviews')}</div>`}
         ${cta}
         ${canEdit ? `<a class="btn-mini" href="/business/${esc(b.slug)}/manage">${t('mg.manage')}</a>` : ''}
-        ${ownerBar}
+        ${followCta} ${ownerBar}
         ${shareRow}
         ${inviteRow}
       </div>
@@ -609,7 +615,7 @@ function claimPage({ user, b, err }) {
 }
 
 // ---------- DASHBOARD ----------
-function dashboard({ user, reviews, owned, pendingV, hidden, appeals, responseNeeded = [], ach = { reviewCount: 0, vpCount: 0, topReviewer: false, verifiedBuyer: false }, msg }) {
+function dashboard({ user, reviews, owned, pendingV, hidden, appeals, responseNeeded = [], ach = { reviewCount: 0, vpCount: 0, topReviewer: false, verifiedBuyer: false }, followAlerts = [], msg }) {
   const initials = esc((user.name || 'A').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase());
   const since = new Date(user.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
   const verifiedCount = owned.filter(b => b.verified).length;
@@ -682,6 +688,16 @@ function dashboard({ user, reviews, owned, pendingV, hidden, appeals, responseNe
         <div><b>${esc(r.biz_name)}</b> · <span class="stars-a">${stars(r.rating)}</span>
           <p class="small muted">${esc(r.title || (r.body || '').slice(0, 120))}</p></div>
         <a class="btn-mini btn-mini-g" href="/business/${esc(r.biz_slug)}/manage">${t('dash.respondNow')} →</a>
+      </div>`).join('')}
+    </section>` : ''}
+    ${followAlerts.length ? `
+    <section class="card col" role="status" aria-live="polite">
+      <h2 class="dash-h">${t('dash.followAlerts')}</h2>
+      ${followAlerts.map(f => `
+      <div class="row-card">
+        <div><b><a href="/business/${esc(f.slug)}">${esc(f.name)}</a></b> · ${esc(f.city)}
+          <p class="small muted">${f.new_count} ${t('dash.newReviews')}</p></div>
+        <a class="btn-mini btn-mini-g" href="/business/${esc(f.slug)}">${t('dash.readNow')} →</a>
       </div>`).join('')}
     </section>` : ''}
     <h2 class="dash-h">${t('dash.myReviews')}</h2>
