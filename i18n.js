@@ -292,6 +292,10 @@ const DICT = {
   'dash.newReviews': ['new review(s) since your last visit', 'ndemanga yatsopano kuyambira pomwe munabwera'],
   'dash.readNow': ['View', 'Onani'],
   'msg.invited': ['Someone invited you to share your experience with this business — your honest review helps other buyers.', 'Wina anakuitanani kuti mufotokoze zimene zinakuchitirani bizinesi imeneyi — ndemanga yanu yama mtima ithandiza ogula ena.'],
+  'ms.rising': ['🌱 Rising — 10+ reviews', '🌱 Ikukwera — ndemanga 10+'],
+  'ms.established': ['🏛️ Established — 50+ reviews', '🏛️ Yakhazikika — ndemanga za 50+'],
+  'ms.trusted': ['🏆 Most trusted — 100+ reviews', '🏆 Ya chikhulupiriro chachikulu — ndemanga za 100+'],
+  'ms.toNext': ['more reviews to earn the next milestone badge', 'ndemanga zina kuti muwoneke ndi chizindikiro chotsatira'],
   'dash.claim': ['Claim this business', 'Dziwani bizinesi imeneyi'],
   'dash.unclaimed': ['Added by you — claim to manage it', 'Munayikani njambazi — dziwani kuti muyendetse'],
 };

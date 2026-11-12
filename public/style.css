@@ -395,6 +395,10 @@ footer .tag{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-weight:80
 .sent-head{font-size:.8rem}
 .sent-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:999px;font-size:.78rem;font-weight:700;background:rgba(0,168,107,.12);color:var(--emerald)}
 .sent-tag.warn{background:rgba(220,38,38,.12);color:#dc2626}
+.milestone-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+.ms-chip{display:inline-flex;align-items:center;padding:4px 12px;border-radius:999px;font-size:.78rem;font-weight:700;background:rgba(59,130,246,.12);color:#2563eb}
+.ms-chip.gold{background:rgba(234,179,8,.18);color:#b45309}
+.ms-next{font-size:.78rem}
 
 /* keyword cloud (roadmap #21) */
 .kw-cloud{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px}

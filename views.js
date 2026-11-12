@@ -3,6 +3,13 @@ const { t, tRaw, esc } = require('./i18n');
 const SEO = require('./seo');
 
 const CATEGORIES = ['Fashion','Electronics','Home & Living','Food & Restaurant','Beauty','Services','Education','Retail','Travel','Transport','Health','Other'];
+// Roadmap #25 — milestone badges at 10 / 50 / 100 visible reviews.
+const MILESTONES = [
+  { n: 10, key: 'ms.rising' },
+  { n: 50, key: 'ms.established' },
+  { n: 100, key: 'ms.trusted', gold: true },
+];
+
 const COUNTRIES = ['Malawi','Zambia','Zimbabwe','Tanzania','Kenya','Nigeria','Ghana','Rwanda','Uganda','South Africa','Mozambique','Botswana','Namibia','Cameroon','Ivory Coast','Senegal','Ethiopia','Other'];
 
 function stars(rating) {
@@ -329,6 +336,15 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
         ${invites ? `<span class="invite-n muted">${t('biz.inviteOpened')}: ${invites}</span>` : ''}
       </div>`;
 
+  // Roadmap #25 — earned milestone chips plus a nudge toward the next one.
+  const msEarned = MILESTONES.filter(ms => total >= ms.n);
+  const msNext = MILESTONES.find(ms => total < ms.n);
+  const milestoneRow = (msEarned.length || msNext) ? `
+      <div class="milestone-row">
+        ${msEarned.map(ms => `<span class="ms-chip${ms.gold ? ' gold' : ''}">${t(ms.key)}</span>`).join('')}
+        ${msNext ? `<span class="ms-next muted">${msNext.n - total} ${t('ms.toNext')}</span>` : ''}
+      </div>` : '';
+
   const seo = {
     title: `${b.name} reviews — ${b.city}, ${b.country}`,
     desc: b.review_count
@@ -370,6 +386,7 @@ function businessPage({ user, b, reviews, dist, page, pages, myRev, alreadyRevie
             <span class="sent-head muted">${t('biz.kwHead')}:</span>
             ${kw.map(k => `<a class="kw-chip" href="/search?q=${encodeURIComponent(k.word)}" style="font-size:${kwChipSize(k.count, kw[0].count)}rem">${esc(k.word)} <b>${k.count}</b></a>`).join('')}
           </div>` : ''}
+          ${milestoneRow}
         </div>
       </div>
       <div class="biz-hero-cta">
