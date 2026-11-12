@@ -28,8 +28,8 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 21. Keyword cloud ("most mentioned: delivery")
 - [x] 22. Share buttons: WhatsApp, X, Facebook
 - [x] 23. Invite friends to review a business
-- [ ] 24. Follow a business — new-review alerts
-- [ ] 25. Milestone badges for businesses (10, 50, 100 reviews)
+- [x] 24. Follow a business — new-review alerts
+- [x] 25. Milestone badges for businesses (10, 50, 100 reviews)
 - [ ] 26. Review deep-link URLs per review
 - [ ] 27. "Reviews near you" weekly digest email
 
