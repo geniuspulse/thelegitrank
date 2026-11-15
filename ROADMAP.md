@@ -30,7 +30,7 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 23. Invite friends to review a business
 - [x] 24. Follow a business — new-review alerts
 - [x] 25. Milestone badges for businesses (10, 50, 100 reviews)
-- [ ] 26. Review deep-link URLs per review
+- [x] 26. Review deep-link URLs per review
 - [ ] 27. "Reviews near you" weekly digest email
 
 ## P1 — Discovery & search
