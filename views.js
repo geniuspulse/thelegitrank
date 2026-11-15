@@ -251,7 +251,7 @@ function reviewItem(r, isOwner, user) {
   <article class="review-card">
     <div class="review-head">
       <div class="avatar">${esc((r.author_name || 'A').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</div>
-      <div class="who"><b>${esc(r.author_name)}</b><span>${new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}${r.updated_at ? ' · ' + t('biz.updated') : ''}</span></div>
+      <div class="who"><b>${esc(r.author_name)}</b><span><a class="rev-link" href="/review/${r.id}" title="Permalink to this review">${new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</a>${r.updated_at ? ' · ' + t('biz.updated') : ''}</span></div>
       ${r.verified_purchase ? `<span class="vp-chip">✓ ${t('biz.vp')}</span>` : ''}
       ${r.author_review_count >= 5 ? `<span class="ach-chip ach-top" title="${t('ach.topHint')}">★ ${t('ach.top')}</span>` : ''}
       ${r.author_vp_count > 0 && !r.verified_purchase ? `<span class="ach-chip ach-vb">✓ ${t('ach.vb')}</span>` : ''}
@@ -866,6 +866,47 @@ function deleteReviewPage({ user, r }) {
   </div></section>` });
 }
 
+// ---------- REVIEW PERMALINK (roadmap #26) ----------
+// One review on its own permanent URL, /review/<id>: shareable in WhatsApp
+// and social previews, indexable, and linked from every review card's date.
+function reviewPage({ user, b, r }) {
+  const reviewUrl = SEO.abs(`/review/${r.id}`);
+  const shareMsg = `${b.name} — ${r.rating}★ ${r.title || tRaw('rev.reviewOne')} on The Legit Rank`;
+  const seo = {
+    title: `${b.name} — review by ${r.author_name}`,
+    desc: `${r.title ? r.title + '. ' : ''}${r.body}`,
+    path: `/review/${r.id}`,
+    type: 'article',
+    modified: r.updated_at || undefined,
+    jsonLd: [SEO.breadcrumbLd([
+      { name: 'Home', path: '/' },
+      { name: b.name, path: `/business/${b.slug}` },
+      { name: `Review by ${r.author_name}`, path: `/review/${r.id}` },
+    ])],
+  };
+  return layout({ title: `${b.name} — review by ${r.author_name}`, user, seo, content: `
+  <section class="page-head"><div class="wrap narrow">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a><span>/</span>
+      <a href="/business/${esc(b.slug)}">${esc(b.name)}</a><span>/</span>
+      <b>${tRaw('rev.reviewOne')}</b>
+    </nav>
+    <h1 class="sec"><span class="stars-a">${stars(r.rating)}</span> ${esc(b.name)}</h1>
+    <p class="muted">${esc(b.category)} · ${esc(b.city)}, ${esc(b.country)} · <a href="/business/${esc(b.slug)}">${t('rev.all')}</a></p>
+  </div></section>
+  <section class="pad"><div class="wrap">
+    <div class="rev-perma">
+      ${reviewItem(r, false, user)}
+      <div class="share-row">
+        <span class="sent-head muted">${t('biz.share')}:</span>
+        <a class="share-btn wa" href="https://wa.me/?text=${encodeURIComponent(shareMsg + ' ' + reviewUrl)}" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="share-btn x" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMsg)}&amp;url=${encodeURIComponent(reviewUrl)}" target="_blank" rel="noopener">X</a>
+        <a class="share-btn fb" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(reviewUrl)}" target="_blank" rel="noopener">Facebook</a>
+      </div>
+    </div>
+  </div></section>` });
+}
+
 // ---------- VERIFICATION APPLY ----------
 function verifyPage({ user, b, err, pending }) {
   if (pending) {
@@ -1341,6 +1382,6 @@ function notFound({ user }) {
 }
 
 module.exports = { layout, home, searchPage, businessPage, reviewForm, loginPage, signupPage,
-  addBizPage, claimPage, dashboard, bizManagePage, verifyPage, deleteReviewPage, notFound, stars, bizCard, termsPage, privacyPage, cookiesPage,
+  addBizPage, claimPage, dashboard, bizManagePage, verifyPage, deleteReviewPage, reviewPage, notFound, stars, bizCard, termsPage, privacyPage, cookiesPage,
   adminOverview, adminBusinesses, adminBusinessDetail, adminVerifications, adminModeration,
   adminReports, adminReportCase, adminUsers, adminSettings, adminAnalytics, adminAudit, reportPage };

@@ -323,6 +323,18 @@ async function handle(req, res) {
       return html(res, 200, views.bizManagePage({ user, b, reviews, verif, msg: q.get('msg') }));
     }
 
+    // Roadmap #26 — permanent link to a single review: /review/<id>.
+    // Hidden reviews and inactive businesses have no public permalink.
+    m = pathname.match(/^\/review\/(\d+)$/);
+    if (m) {
+      const r = dbm.getReviewById(Number(m[1]));
+      const b = r && dbm.getBusinessById(r.business_id);
+      if (!r || !b || b.status !== 'active') return html(res, 404, views.notFound({ user }));
+      if (user) r.helpful_by_me = !!dbm.db.prepare('SELECT 1 FROM review_helpful_votes WHERE review_id = ? AND user_id = ?').get(r.id, user.id);
+      if (r.edit_count) r.history = dbm.reviewHistory(r.id);
+      return html(res, 200, views.reviewPage({ user, b, r }));
+    }
+
     if (pathname === '/businesses/new') {
       if (!user) return redirect(res, '/login?next=/businesses/new');
       return html(res, 200, views.addBizPage({ user, values: { name: q.get('name') || '' } }));
