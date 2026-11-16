@@ -173,6 +173,8 @@ function migrate() {
     ['Fashion','Electronics','Home & Living','Food & Restaurant','Beauty','Services','Education','Retail','Travel','Transport','Health','Other']
       .forEach(c => db.prepare('INSERT OR IGNORE INTO categories (name, created_at) VALUES (?,?)').run(c, now()));
   }
+  // Roadmap #28 — keep the full-text search index in sync (see ensureSearchFts).
+  ensureSearchFts();
 }
 
 // ---- password hashing (scrypt) ----
@@ -213,17 +215,110 @@ function getBusinessBySlug(slug) {
 function getBusinessById(id) {
   return db.prepare(`SELECT ${BIZ_AGG} FROM businesses b WHERE b.id = ?`).get(id);
 }
-function searchBusinesses(q, category) {
-  let sql = `SELECT ${BIZ_AGG} FROM businesses b WHERE b.status = 'active'`;
-  const params = [];
-  if (q) {
-    sql += ` AND (LOWER(b.name) LIKE ? OR LOWER(b.category) LIKE ? OR LOWER(b.city) LIKE ? OR LOWER(b.country) LIKE ?)`;
-    const like = '%' + String(q).toLowerCase() + '%';
-    params.push(like, like, like, like);
+// Roadmap #28 — full-text search (FTS5) with typo-tolerant fallback.
+// Three passes: (1) FTS5 prefix match over name/category/city/country/description,
+// (2) substring LIKE (previous behaviour), (3) fuzzy edit-distance match so
+// misspellings like "blantre" still find Blantyre businesses. Returns
+// { results, mode } where mode is 'browse'|'words'|'substring'|'fuzzy'|'none'.
+let ftsOk = false;
+function ensureSearchFts() {
+  try {
+    db.exec(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS businesses_fts USING fts5(name, category, city, country, description, tokenize='unicode61');
+      CREATE TRIGGER IF NOT EXISTS businesses_fts_ai AFTER INSERT ON businesses BEGIN
+        INSERT INTO businesses_fts(rowid, name, category, city, country, description) VALUES (new.id, new.name, new.category, new.city, new.country, new.description);
+      END;
+      CREATE TRIGGER IF NOT EXISTS businesses_fts_ad AFTER DELETE ON businesses BEGIN
+        DELETE FROM businesses_fts WHERE rowid = old.id;
+      END;
+      CREATE TRIGGER IF NOT EXISTS businesses_fts_au AFTER UPDATE ON businesses BEGIN
+        DELETE FROM businesses_fts WHERE rowid = old.id;
+        INSERT INTO businesses_fts(rowid, name, category, city, country, description) VALUES (new.id, new.name, new.category, new.city, new.country, new.description);
+      END;
+    `);
+    // re-index once per boot: dataset is small and this guarantees a clean sync
+    db.exec('DELETE FROM businesses_fts');
+    db.prepare('INSERT INTO businesses_fts(rowid, name, category, city, country, description) SELECT id, name, category, city, country, description FROM businesses').run();
+    ftsOk = true;
+  } catch (e) {
+    console.warn('[warn] FTS5 unavailable (' + e.message + ') — search falls back to substring + fuzzy matching');
   }
-  if (category) { sql += ` AND b.category = ?`; params.push(category); }
-  sql += ` ORDER BY b.verified DESC, (avg_rating IS NULL), avg_rating DESC, review_count DESC LIMIT 50`;
-  return db.prepare(sql).all(...params);
+}
+function searchTerms(q) {
+  return String(q || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 2).slice(0, 8);
+}
+function editDistance(a, b) {
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  let cur = new Array(n + 1);
+  for (let i = 1; i <= m; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    [prev, cur] = [cur, prev];
+  }
+  return prev[n];
+}
+function fuzzyWordHit(term, w, tol) {
+  if (w === term || w.startsWith(term) || term.startsWith(w)) return true;
+  if (Math.abs(w.length - term.length) > tol) return false;
+  return editDistance(term, w) <= tol;
+}
+function fuzzySearchBusinesses(terms, category) {
+  const rows = db.prepare(`SELECT ${BIZ_AGG} FROM businesses b WHERE b.status = 'active'${category ? ' AND b.category = ?' : ''}`)
+    .all(...(category ? [category] : []));
+  const scored = [];
+  for (const b of rows) {
+    const keyWords = new Set(searchTerms(`${b.name} ${b.category} ${b.city} ${b.country}`));
+    const descWords = new Set(searchTerms(b.description || ''));
+    let primary = 0;
+    let ok = true;
+    for (const term of terms) {
+      const tol = term.length >= 6 ? 2 : 1;
+      let hit = false;
+      for (const w of keyWords) { if (fuzzyWordHit(term, w, tol)) { hit = true; break; } }
+      if (hit) { primary++; continue; }
+      for (const w of descWords) { if (fuzzyWordHit(term, w, tol)) { hit = true; break; } }
+      if (!hit) { ok = false; break; }
+    }
+    if (ok) scored.push({ b, primary });
+  }
+  scored.sort((x, y) => y.primary - x.primary || y.b.verified - x.b.verified
+    || (y.b.avg_rating || 0) - (x.b.avg_rating || 0) || (y.b.review_count || 0) - (x.b.review_count || 0));
+  return scored.map(x => x.b);
+}
+function searchBusinesses(q, category) {
+  const catSql = category ? ' AND b.category = ?' : '';
+  const orderSql = ' ORDER BY b.verified DESC, (avg_rating IS NULL), avg_rating DESC, review_count DESC LIMIT 50';
+  if (!q) {
+    const rows = db.prepare(`SELECT ${BIZ_AGG} FROM businesses b WHERE b.status = 'active'${catSql}${orderSql}`)
+      .all(...(category ? [category] : []));
+    return { results: rows, mode: 'browse' };
+  }
+  const terms = searchTerms(q);
+  if (ftsOk && terms.length) {
+    try {
+      const match = terms.map(w => '"' + w.replace(/"/g, '') + '"*').join(' ');
+      const rows = db.prepare(`SELECT ${BIZ_AGG} FROM businesses_fts f JOIN businesses b ON b.id = f.rowid
+        WHERE businesses_fts MATCH ? AND b.status = 'active'${catSql}${orderSql}`)
+        .all(match, ...(category ? [category] : []));
+      if (rows.length) return { results: rows, mode: 'words' };
+    } catch { /* fall through to substring */ }
+  }
+  const like = '%' + String(q).toLowerCase() + '%';
+  const sub = db.prepare(`SELECT ${BIZ_AGG} FROM businesses b WHERE b.status = 'active'${catSql}
+    AND (LOWER(b.name) LIKE ? OR LOWER(b.category) LIKE ? OR LOWER(b.city) LIKE ? OR LOWER(b.country) LIKE ? OR LOWER(b.description) LIKE ?)
+    ORDER BY b.name LIMIT 50`)
+    .all(...(category ? [category] : []).concat([like, like, like, like, like]));
+  if (sub.length) return { results: sub, mode: 'substring' };
+  if (terms.length) {
+    const fz = fuzzySearchBusinesses(terms, category);
+    if (fz.length) return { results: fz, mode: 'fuzzy' };
+  }
+  return { results: [], mode: 'none' };
 }
 function topBusinesses(limit = 6) {
   return db.prepare(`

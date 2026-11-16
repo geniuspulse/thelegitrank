@@ -202,7 +202,7 @@ function home({ user, stats, top, msg }) {
 }
 
 // ---------- SEARCH ----------
-function searchPage({ user, q, category, results, msg }) {
+function searchPage({ user, q, category, results, mode, msg }) {
   const chips = [''].concat(CATEGORIES).map(c =>
     `<a class="chip ${c === category ? 'chip-on' : ''}" href="/search?q=${encodeURIComponent(q || '')}${c ? '&category=' + encodeURIComponent(c) : ''}">${esc(c || 'All')}</a>`).join('');
   const catPart = category ? `${category} businesses` : 'African businesses';
@@ -234,6 +234,9 @@ function searchPage({ user, q, category, results, msg }) {
   ${flash(msg || '')}
   <section class="pad-sm">
     <div class="wrap">
+      ${mode === 'fuzzy' && results.length
+        ? `<p class="muted small">${t('search.fuzzyNote')}</p>`
+        : ''}
       ${results.length
         ? `<div class="biz-list">${results.map(bizCard).join('')}</div>`
         : `<div class="empty">

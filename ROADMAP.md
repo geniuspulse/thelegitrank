@@ -31,10 +31,10 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 24. Follow a business — new-review alerts
 - [x] 25. Milestone badges for businesses (10, 50, 100 reviews)
 - [x] 26. Review deep-link URLs per review
-- [ ] 27. "Reviews near you" weekly digest email
+- [skip] 27. "Reviews near you" weekly digest email — needs owner: email provider/credentials for sending digests
 
 ## P1 — Discovery & search
-- [ ] 28. Full-text search with typo tolerance
+- [x] 28. Full-text search with typo tolerance
 - [ ] 29. Category landing pages with SEO copy
 - [ ] 30. City/country pages ("Best in Blantyre")
 - [ ] 31. Filters: rating, verified, review count, category

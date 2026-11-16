@@ -57,6 +57,8 @@ const DICT = {
   'search.none': ['No businesses found.', 'Palibe mabizinesi apezeka.'],
   'search.noneHint': ['Try a different name, or add this business so buyers can review it.', 'Yesetsani dzina lina, kapena wonjezerani bizinesiyi kuti ogula athe kuyidemanga.'],
   'search.addPrompt': ['Add this business', 'Wonjezerani bizinesiyi'],
+  'search.fuzzyNote': ['No exact matches — showing the closest names we found.', 'Palibe zolingirira zoona — zikuonetsa zatchingwire kwathu.'],
+
 
   // business page
   'biz.reviews': ['Reviews', 'Ndemanga'],

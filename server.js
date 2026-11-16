@@ -242,8 +242,10 @@ async function handle(req, res) {
     if (pathname === '/search') {
       const q_ = (q.get('q') || '').slice(0, 80);
       const cat = (q.get('category') || '').slice(0, 40);
-      const results = dbm.searchBusinesses(q_, cat || null);
-      return html(res, 200, views.searchPage({ user, q: q_, category: cat, results, msg: q.get('msg') }));
+      // Roadmap #28 — searchBusinesses now returns { results, mode }
+      // (FTS prefix / substring / fuzzy typo-tolerant match).
+      const srch = dbm.searchBusinesses(q_, cat || null);
+      return html(res, 200, views.searchPage({ user, q: q_, category: cat, results: srch.results, mode: srch.mode, msg: q.get('msg') }));
     }
 
     let m = pathname.match(/^\/business\/([a-z0-9-]+)$/);
