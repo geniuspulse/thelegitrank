@@ -89,7 +89,7 @@ ${content}
     <span>${t('nav.tagline')} — ${tRaw('home.ctaSub')}</span>
     <div class="foot-cats">
       <span class="foot-cats-l">${t('nav.byCategory')}</span>
-      ${CATEGORIES.map(c => `<a href="/search?category=${encodeURIComponent(c)}">${esc(c)}</a>`).join('')}
+      ${CATEGORIES.map(c => `<a href="/category/${c.toLowerCase().replace(/[^a-z0-9]+/g, '-')}">${esc(c)}</a>`).join('')}
     </div>
     © ${new Date().getFullYear()} The Legit Rank ·
     <a class="foot-link" href="/terms">Terms</a> ·
@@ -199,6 +199,27 @@ function home({ user, stats, top, msg }) {
       <a class="btn btn-white" href="/signup">${t('nav.signup')} →</a>
     </div>
   </div>` });
+}
+
+// ---------- CATEGORY LANDING PAGES ----------
+function categoryPage({ user, category, results }) {
+  const title = `${category} businesses in Africa — reviews and ratings`;
+  const description = `Explore ${category.toLowerCase()} businesses across Africa. Compare real customer reviews, ratings and verified sellers before you choose.`;
+  return layout({ title: `${title} — The Legit Rank`, user, seo: {
+    title: `${title} — The Legit Rank`, desc: description,
+    path: `/category/${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+    jsonLd: [SEO.breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Browse', path: '/search' }, { name: category, path: `/category/${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` }])],
+  }, content: `
+  <section class="page-head"><div class="wrap">
+    <p class="tiny"><a href="/search">Browse all businesses</a> / ${esc(category)}</p>
+    <h1 class="sec">${esc(category)} businesses in Africa</h1>
+    <p class="sec-sub">${esc(description)}</p>
+    <p class="muted">${results.length} ${results.length === 1 ? 'business' : 'businesses'} listed in this category.</p>
+  </div></section>
+  <section class="pad-sm"><div class="wrap">
+    ${results.length ? `<div class="biz-list">${results.map(bizCard).join('')}</div>` : `<div class="empty"><p><b>No ${esc(category.toLowerCase())} businesses listed yet.</b></p><p class="muted">Be the first to add one and help customers find trusted businesses.</p><a class="btn btn-green" href="/businesses/new">Add a business →</a></div>`}
+    <p class="center" style="margin-top:24px"><a class="btn btn-outline" href="/search?category=${encodeURIComponent(category)}">Search ${esc(category.toLowerCase())} businesses →</a></p>
+  </div></section>` });
 }
 
 // ---------- SEARCH ----------
@@ -1384,7 +1405,7 @@ function notFound({ user }) {
   </div></section>` });
 }
 
-module.exports = { layout, home, searchPage, businessPage, reviewForm, loginPage, signupPage,
+module.exports = { layout, home, searchPage, categoryPage, businessPage, reviewForm, loginPage, signupPage,
   addBizPage, claimPage, dashboard, bizManagePage, verifyPage, deleteReviewPage, reviewPage, notFound, stars, bizCard, termsPage, privacyPage, cookiesPage,
   adminOverview, adminBusinesses, adminBusinessDetail, adminVerifications, adminModeration,
   adminReports, adminReportCase, adminUsers, adminSettings, adminAnalytics, adminAudit, reportPage };

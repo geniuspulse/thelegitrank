@@ -34,3 +34,6 @@
 - 2026-11-12 — #25 Milestone badges — business profiles now show milestone chips at 10/50/100 visible reviews (🌱 Rising, 🏛️ Established, 🏆 Most trusted) plus a 'N more reviews to earn the next milestone badge' nudge toward the next tier; view-only change, bilingual EN/Chichewa, no JS so CSP untouched. Live via Coolify deploy 1520e62, verified 200 + nudge row on both live business pages + served CSS.
 - 2026-11-12 — #24 backfill — follow-a-business shipped Nov 11 in f23a0ff but its roadmap checkbox was left unmarked; verified live ('+ Follow' button on live business pages) and marked [x] today. No new build in this entry.
 - 2026-11-15 — #26 Review deep-link URLs — every review has a permanent /review/<id> page (canonical + og:url + breadcrumb JSON-LD + share row); review-card dates link to it; hidden reviews 404.
+
+
+2026-11-17 — #29 Category landing pages: category-specific SEO pages at /category/<slug>, with tailored copy, breadcrumb metadata, business listings and links from the footer; category URLs included in the sitemap.

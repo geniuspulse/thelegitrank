@@ -239,6 +239,15 @@ async function handle(req, res) {
       return html(res, 200, views.home({ user, stats: dbm.platformStats(), top: dbm.topBusinesses(6), msg: q.get('msg') }));
     }
 
+    let categoryMatch = pathname.match(/^\/category\/([a-z0-9-]+)$/);
+    if (categoryMatch) {
+      const slug = categoryMatch[1];
+      const category = dbm.listCategories().map(c => c.name).find(name => name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug);
+      if (!category) return html(res, 404, views.notFound({ user }));
+      const result = dbm.searchBusinesses('', category);
+      return html(res, 200, views.categoryPage({ user, category, results: result.results }));
+    }
+
     if (pathname === '/search') {
       const q_ = (q.get('q') || '').slice(0, 80);
       const cat = (q.get('category') || '').slice(0, 40);
@@ -577,7 +586,7 @@ async function handle(req, res) {
       const entry = (p, lastmod, priority) => `<url><loc>${esc(SEO.SITE + p)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}<priority>${priority}</priority></url>`;
       const today = new Date().toISOString().slice(0, 10);
       const urls = [entry('/', today, '1.0'), entry('/search', today, '0.8')]
-        .concat(cats.map(c => entry(`/search?category=${encodeURIComponent(c.category)}`, today, '0.7')))
+        .concat(cats.map(c => entry(`/category/${c.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, today, '0.7')))
         .concat([entry('/terms', today, '0.3'), entry('/privacy', today, '0.3'), entry('/cookies', today, '0.3')])
         .concat(biz.map(b => entry('/business/' + b.slug, (b.created_at || '').slice(0, 10) || undefined, '0.9')))
         .join('');
