@@ -36,7 +36,7 @@ Daily build automation works top-down. Mark done with `[x]`.
 ## P1 — Discovery & search
 - [x] 28. Full-text search with typo tolerance
 - [x] 29. Category landing pages with SEO copy
-- [ ] 30. City/country pages ("Best in Blantyre")
+- [x] 30. City/country pages ("Best in Blantyre")
 - [ ] 31. Filters: rating, verified, review count, category
 - [ ] 32. Sorting: most reviewed, top rated, newest
 - [ ] 33. Pagination/infinite scroll on search
