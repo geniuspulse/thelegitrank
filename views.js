@@ -222,8 +222,41 @@ function categoryPage({ user, category, results }) {
   </div></section>` });
 }
 
+// Roadmap #30 — city/country landing pages: "Best businesses in Blantyre" /
+// "Best businesses in Malawi". Same card list as the category page, plus
+// chips linking the other top locations so every place page is discoverable.
+function placeChips(places, activeKind, activePlace) {
+  if (!places) return '';
+  const link = (kind, name) => `<a class="chip ${(kind === activeKind && name === activePlace) ? 'chip-on' : ''}" href="/${kind}/${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}">${esc(name)}</a>`;
+  const chips = (places.cities || []).slice(0, 8).map(p => link('city', p.name))
+    .concat((places.countries || []).slice(0, 6).map(p => link('country', p.name))).join('');
+  return chips ? `<div class="chips" style="margin-top:24px">${chips}</div>` : '';
+}
+
+function placePage({ user, kind, place, results, places }) {
+  const path = `/${kind}/${place.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  const where = kind === 'country' ? `across ${place}` : `in ${place}`;
+  const title = `Best businesses in ${place} — reviews and ratings`;
+  const description = `The best-rated businesses ${where}: real customer reviews, star ratings and verified sellers before you pay.`;
+  return layout({ title: `${title} — The Legit Rank`, user, seo: {
+    title: `${title} — The Legit Rank`, desc: description, path,
+    jsonLd: [SEO.breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Browse', path: '/search' }, { name: place, path }])],
+  }, content: `
+  <section class="page-head"><div class="wrap">
+    <p class="tiny"><a href="/search">Browse all businesses</a> / ${esc(place)}</p>
+    <h1 class="sec">Best businesses in ${esc(place)}</h1>
+    <p class="sec-sub">${esc(description)}</p>
+    <p class="muted">${results.length} ${results.length === 1 ? 'business' : 'businesses'} listed ${esc(where)}.</p>
+  </div></section>
+  <section class="pad-sm"><div class="wrap">
+    ${results.length ? `<div class="biz-list">${results.map(bizCard).join('')}</div>` : `<div class="empty"><p><b>No businesses listed ${esc(where)} yet.</b></p><p class="muted">Be the first to add one and help customers find trusted businesses.</p><a class="btn btn-green" href="/businesses/new">Add a business →</a></div>`}
+    ${placeChips(places, kind, place)}
+    <p class="center" style="margin-top:24px"><a class="btn btn-outline" href="/search?q=${encodeURIComponent(place)}">Search businesses in ${esc(place)} →</a></p>
+  </div></section>` });
+}
+
 // ---------- SEARCH ----------
-function searchPage({ user, q, category, results, mode, msg }) {
+function searchPage({ user, q, category, results, mode, msg, places }) {
   const chips = [''].concat(CATEGORIES).map(c =>
     `<a class="chip ${c === category ? 'chip-on' : ''}" href="/search?q=${encodeURIComponent(q || '')}${c ? '&category=' + encodeURIComponent(c) : ''}">${esc(c || 'All')}</a>`).join('');
   const catPart = category ? `${category} businesses` : 'African businesses';
@@ -250,6 +283,7 @@ function searchPage({ user, q, category, results, mode, msg }) {
         <button class="btn btn-green" type="submit">${t('common.search')}</button>
       </form>
       <div class="chips">${chips}</div>
+      ${placeChips(places)}
     </div>
   </section>
   ${flash(msg || '')}
@@ -1405,7 +1439,7 @@ function notFound({ user }) {
   </div></section>` });
 }
 
-module.exports = { layout, home, searchPage, categoryPage, businessPage, reviewForm, loginPage, signupPage,
+module.exports = { layout, home, searchPage, categoryPage, placePage, businessPage, reviewForm, loginPage, signupPage,
   addBizPage, claimPage, dashboard, bizManagePage, verifyPage, deleteReviewPage, reviewPage, notFound, stars, bizCard, termsPage, privacyPage, cookiesPage,
   adminOverview, adminBusinesses, adminBusinessDetail, adminVerifications, adminModeration,
   adminReports, adminReportCase, adminUsers, adminSettings, adminAnalytics, adminAudit, reportPage };

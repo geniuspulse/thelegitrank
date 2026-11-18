@@ -248,13 +248,26 @@ async function handle(req, res) {
       return html(res, 200, views.categoryPage({ user, category, results: result.results }));
     }
 
+    // Roadmap #30 — city/country landing pages ("Best in Blantyre", "Best in Malawi").
+    let placeMatch = pathname.match(/^\/(city|country)\/([a-z0-9-]+)$/);
+    if (placeMatch) {
+      const kind = placeMatch[1];
+      const slug = placeMatch[2];
+      const toSlug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const places = dbm.listPlaces();
+      const list = kind === 'city' ? places.cities : places.countries;
+      const hit = list.find(p => toSlug(p.name) === slug);
+      if (!hit) return html(res, 404, views.notFound({ user }));
+      return html(res, 200, views.placePage({ user, kind, place: hit.name, results: dbm.businessesInPlace(kind, hit.name), places }));
+    }
+
     if (pathname === '/search') {
       const q_ = (q.get('q') || '').slice(0, 80);
       const cat = (q.get('category') || '').slice(0, 40);
       // Roadmap #28 — searchBusinesses now returns { results, mode }
       // (FTS prefix / substring / fuzzy typo-tolerant match).
       const srch = dbm.searchBusinesses(q_, cat || null);
-      return html(res, 200, views.searchPage({ user, q: q_, category: cat, results: srch.results, mode: srch.mode, msg: q.get('msg') }));
+      return html(res, 200, views.searchPage({ user, q: q_, category: cat, results: srch.results, mode: srch.mode, msg: q.get('msg'), places: dbm.listPlaces() }));
     }
 
     let m = pathname.match(/^\/business\/([a-z0-9-]+)$/);
@@ -587,6 +600,8 @@ async function handle(req, res) {
       const today = new Date().toISOString().slice(0, 10);
       const urls = [entry('/', today, '1.0'), entry('/search', today, '0.8')]
         .concat(cats.map(c => entry(`/category/${c.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, today, '0.7')))
+        .concat(dbm.listPlaces().cities.map(c => entry(`/city/${c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, today, '0.7')))
+        .concat(dbm.listPlaces().countries.map(c => entry(`/country/${c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, today, '0.6')))
         .concat([entry('/terms', today, '0.3'), entry('/privacy', today, '0.3'), entry('/cookies', today, '0.3')])
         .concat(biz.map(b => entry('/business/' + b.slug, (b.created_at || '').slice(0, 10) || undefined, '0.9')))
         .join('');

@@ -320,6 +320,22 @@ function searchBusinesses(q, category) {
   }
   return { results: [], mode: 'none' };
 }
+// Roadmap #30 — city/country landing pages ("Best in Blantyre", "Best in Malawi").
+// Places with at least one active listing, plus the listings themselves.
+function listPlaces() {
+  const cities = db.prepare(`SELECT TRIM(city) AS name, COUNT(*) AS n FROM businesses
+    WHERE status='active' AND city IS NOT NULL AND TRIM(city) != ''
+    GROUP BY LOWER(TRIM(city)) ORDER BY n DESC, name ASC`).all();
+  const countries = db.prepare(`SELECT TRIM(country) AS name, COUNT(*) AS n FROM businesses
+    WHERE status='active' AND country IS NOT NULL AND TRIM(country) != ''
+    GROUP BY LOWER(TRIM(country)) ORDER BY n DESC, name ASC`).all();
+  return { cities, countries };
+}
+function businessesInPlace(kind, name) {
+  const col = kind === 'country' ? 'b.country' : 'b.city';
+  return db.prepare(`SELECT ${BIZ_AGG} FROM businesses b WHERE b.status = 'active' AND LOWER(${col}) = LOWER(?)
+    ORDER BY b.verified DESC, (avg_rating IS NULL), avg_rating DESC, review_count DESC LIMIT 50`).all(name);
+}
 function topBusinesses(limit = 6) {
   return db.prepare(`
     SELECT ${BIZ_AGG} FROM businesses b WHERE b.status = 'active'
@@ -771,7 +787,7 @@ function followAlerts(userId) {
 
 module.exports = {
   db, init, now, hashPassword, verifyPassword, slugify, uniqueSlug,
-  getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses,
+  getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses, listPlaces, businessesInPlace,
   reviewsForBusiness, getReviewById, ratingDistribution, bizSentimentTags, bizKeywordCloud, myReview, userReviews,
   ownedBusinesses, reviewsNeedingOwnerResponse, platformStats, reviewerAchievements,
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,
