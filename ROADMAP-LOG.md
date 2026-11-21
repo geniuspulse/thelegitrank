@@ -39,3 +39,6 @@
 2026-11-17 — #29 Category landing pages: category-specific SEO pages at /category/<slug>, with tailored copy, breadcrumb metadata, business listings and links from the footer; category URLs included in the sitemap.
 
 2026-11-18 — #30 City/country landing pages: /city/<slug> and /country/<slug> ("Best businesses in Mangochi/Blantyre", "Best businesses in Malawi") with tailored SEO copy, breadcrumb JSON-LD, business cards ordered by rating, location chips on /search and on every place page, and city/country URLs in the sitemap. Shipped in 81cc1ca, deployed via Coolify, verified live (200 + cards + sitemap + 404 for unknown places).
+
+
+2026-11-21 — #31 Search filters: added minimum rating, minimum review count, and verified-only controls alongside existing category filtering; query parameters persist through category chips and clear correctly. Shipped in c291d3a, deployed and verified live (200 with filter controls and selected values).
