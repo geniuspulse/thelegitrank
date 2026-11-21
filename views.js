@@ -256,9 +256,9 @@ function placePage({ user, kind, place, results, places }) {
 }
 
 // ---------- SEARCH ----------
-function searchPage({ user, q, category, results, mode, msg, places }) {
+function searchPage({ user, q, category, results, mode, msg, places, minRating = 0, verifiedOnly = false, minReviews = 0 }) {
   const chips = [''].concat(CATEGORIES).map(c =>
-    `<a class="chip ${c === category ? 'chip-on' : ''}" href="/search?q=${encodeURIComponent(q || '')}${c ? '&category=' + encodeURIComponent(c) : ''}">${esc(c || 'All')}</a>`).join('');
+    `<a class="chip ${c === category ? 'chip-on' : ''}" href="/search?q=${encodeURIComponent(q || '')}${c ? '&category=' + encodeURIComponent(c) : ''}${minRating ? '&min_rating=' + minRating : ''}${verifiedOnly ? '&verified=1' : ''}${minReviews ? '&min_reviews=' + minReviews : ''}">${esc(c || 'All')}</a>`).join('');
   const catPart = category ? `${category} businesses` : 'African businesses';
   const seo = q ? {
     title: `Search results for “${q}” — The Legit Rank`,
@@ -278,9 +278,17 @@ function searchPage({ user, q, category, results, mode, msg, places }) {
     <div class="wrap">
       <h1 class="sec">${q ? `${t('search.results')}: “${esc(q)}”` : t('nav.browse')}</h1>
       <form class="search-inline" action="/search" method="get">
-        <input type="search" name="q" value="${esc(q)}" placeholder="${esc(tRaw('home.searchLabel'))}…">
+        <input type="search" name="q" value="${esc(q)}" placeholder="${esc(tRaw('home.searchLabel'))}…" aria-label="Search business">
         <input type="hidden" name="category" value="${esc(category || '')}">
         <button class="btn btn-green" type="submit">${t('common.search')}</button>
+      </form>
+      <form class="search-filters" action="/search" method="get" aria-label="Filter businesses">
+        <input type="hidden" name="q" value="${esc(q)}"><input type="hidden" name="category" value="${esc(category || '')}">
+        <label>Minimum rating <select name="min_rating"><option value="0">Any rating</option>${[3,4,4.5,5].map(n => `<option value="${n}" ${Number(minRating) === n ? 'selected' : ''}>${n}+ stars</option>`).join('')}</select></label>
+        <label>Minimum reviews <select name="min_reviews"><option value="0">Any count</option>${[1,5,10,25,50].map(n => `<option value="${n}" ${Number(minReviews) === n ? 'selected' : ''}>${n}+ reviews</option>`).join('')}</select></label>
+        <label class="filter-check"><input type="checkbox" name="verified" value="1" ${verifiedOnly ? 'checked' : ''}> Verified businesses</label>
+        <button class="btn btn-outline" type="submit">Apply filters</button>
+        <a class="filter-clear" href="/search${q ? '?q=' + encodeURIComponent(q) : ''}${category ? (q ? '&' : '?') + 'category=' + encodeURIComponent(category) : ''}">Clear</a>
       </form>
       <div class="chips">${chips}</div>
       ${placeChips(places)}

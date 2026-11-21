@@ -266,8 +266,13 @@ async function handle(req, res) {
       const cat = (q.get('category') || '').slice(0, 40);
       // Roadmap #28 — searchBusinesses now returns { results, mode }
       // (FTS prefix / substring / fuzzy typo-tolerant match).
+      const minRating = Math.min(5, Math.max(0, Number(q.get('min_rating')) || 0));
+      const verifiedOnly = q.get('verified') === '1';
+      const minReviews = Math.min(100000, Math.max(0, parseInt(q.get('min_reviews'), 10) || 0));
       const srch = dbm.searchBusinesses(q_, cat || null);
-      return html(res, 200, views.searchPage({ user, q: q_, category: cat, results: srch.results, mode: srch.mode, msg: q.get('msg'), places: dbm.listPlaces() }));
+      const results = srch.results.filter(b => (!minRating || (b.avg_rating || 0) >= minRating)
+        && (!verifiedOnly || Boolean(b.verified)) && (!minReviews || (b.review_count || 0) >= minReviews));
+      return html(res, 200, views.searchPage({ user, q: q_, category: cat, results, mode: srch.mode, msg: q.get('msg'), places: dbm.listPlaces(), minRating, verifiedOnly, minReviews }));
     }
 
     let m = pathname.match(/^\/business\/([a-z0-9-]+)$/);
