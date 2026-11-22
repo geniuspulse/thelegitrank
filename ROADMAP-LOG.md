@@ -42,3 +42,5 @@
 
 
 2026-11-21 — #31 Search filters: added minimum rating, minimum review count, and verified-only controls alongside existing category filtering; query parameters persist through category chips and clear correctly. Shipped in c291d3a, deployed and verified live (200 with filter controls and selected values).
+
+2026-11-22 — #32 Search sorting: added recommended, most reviewed, top rated, and newest options while preserving search filters; deployed and verified live.

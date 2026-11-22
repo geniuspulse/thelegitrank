@@ -38,7 +38,7 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 29. Category landing pages with SEO copy
 - [x] 30. City/country pages ("Best in Blantyre")
 - [x] 31. Filters: rating, verified, review count, category
-- [ ] 32. Sorting: most reviewed, top rated, newest
+- [x] 32. Sorting: most reviewed, top rated, newest
 - [ ] 33. Pagination/infinite scroll on search
 - [ ] 34. "Trending this week" section
 - [ ] 35. Compare two businesses side by side
