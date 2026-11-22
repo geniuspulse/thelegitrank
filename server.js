@@ -269,10 +269,17 @@ async function handle(req, res) {
       const minRating = Math.min(5, Math.max(0, Number(q.get('min_rating')) || 0));
       const verifiedOnly = q.get('verified') === '1';
       const minReviews = Math.min(100000, Math.max(0, parseInt(q.get('min_reviews'), 10) || 0));
+      const sort = ['reviewed', 'rated', 'newest'].includes(q.get('sort')) ? q.get('sort') : 'default';
       const srch = dbm.searchBusinesses(q_, cat || null);
       const results = srch.results.filter(b => (!minRating || (b.avg_rating || 0) >= minRating)
         && (!verifiedOnly || Boolean(b.verified)) && (!minReviews || (b.review_count || 0) >= minReviews));
-      return html(res, 200, views.searchPage({ user, q: q_, category: cat, results, mode: srch.mode, msg: q.get('msg'), places: dbm.listPlaces(), minRating, verifiedOnly, minReviews }));
+      const sorters = {
+        reviewed: (a, b) => (b.review_count || 0) - (a.review_count || 0),
+        rated: (a, b) => (b.avg_rating || 0) - (a.avg_rating || 0) || (b.review_count || 0) - (a.review_count || 0),
+        newest: (a, b) => String(b.created_at || b.created_date || '').localeCompare(String(a.created_at || a.created_date || '')),
+      };
+      if (sorters[sort]) results.sort(sorters[sort]);
+      return html(res, 200, views.searchPage({ user, q: q_, category: cat, results, mode: srch.mode, msg: q.get('msg'), places: dbm.listPlaces(), minRating, verifiedOnly, minReviews, sort }));
     }
 
     let m = pathname.match(/^\/business\/([a-z0-9-]+)$/);
