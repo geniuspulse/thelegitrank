@@ -256,7 +256,7 @@ function placePage({ user, kind, place, results, places }) {
 }
 
 // ---------- SEARCH ----------
-function searchPage({ user, q, category, results, mode, msg, places, minRating = 0, verifiedOnly = false, minReviews = 0, sort = 'default' }) {
+function searchPage({ user, q, category, results, totalResults = results.length, page = 1, pages = 1, mode, msg, places, minRating = 0, verifiedOnly = false, minReviews = 0, sort = 'default' }) {
   const chips = [''].concat(CATEGORIES).map(c =>
     `<a class="chip ${c === category ? 'chip-on' : ''}" href="/search?q=${encodeURIComponent(q || '')}${c ? '&category=' + encodeURIComponent(c) : ''}${minRating ? '&min_rating=' + minRating : ''}${verifiedOnly ? '&verified=1' : ''}${minReviews ? '&min_reviews=' + minReviews : ''}">${esc(c || 'All')}</a>`).join('');
   const catPart = category ? `${category} businesses` : 'African businesses';
@@ -301,8 +301,10 @@ function searchPage({ user, q, category, results, mode, msg, places, minRating =
       ${mode === 'fuzzy' && results.length
         ? `<p class="muted small">${t('search.fuzzyNote')}</p>`
         : ''}
+      ${totalResults ? `<p class="muted small">Showing ${((page - 1) * 12) + 1}–${Math.min(page * 12, totalResults)} of ${totalResults} businesses</p>` : ''}
       ${results.length
-        ? `<div class="biz-list">${results.map(bizCard).join('')}</div>`
+        ? `<div class="biz-list">${results.map(bizCard).join('')}</div>
+           ${pages > 1 ? `<nav class="pagination" aria-label="Search result pages">${page > 1 ? `<a class="btn btn-outline" href="${'/search?' + new URLSearchParams({ q: q || '', category: category || '', min_rating: String(minRating || 0), min_reviews: String(minReviews || 0), verified: verifiedOnly ? '1' : '', sort, page: String(page - 1) }).toString()}">← Previous</a>` : ''}<span class="muted">Page ${page} of ${pages}</span>${page < pages ? `<a class="btn btn-outline" href="${'/search?' + new URLSearchParams({ q: q || '', category: category || '', min_rating: String(minRating || 0), min_reviews: String(minReviews || 0), verified: verifiedOnly ? '1' : '', sort, page: String(page + 1) }).toString()}">Next →</a>` : ''}</nav>` : ''}`
         : `<div class="empty">
              <p><b>${t('search.none')}</b></p>
              <p class="muted">${t('search.noneHint')}</p>

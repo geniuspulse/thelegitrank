@@ -292,7 +292,7 @@ function fuzzySearchBusinesses(terms, category) {
 }
 function searchBusinesses(q, category) {
   const catSql = category ? ' AND b.category = ?' : '';
-  const orderSql = ' ORDER BY b.verified DESC, (avg_rating IS NULL), avg_rating DESC, review_count DESC LIMIT 50';
+  const orderSql = ' ORDER BY b.verified DESC, (avg_rating IS NULL), avg_rating DESC, review_count DESC LIMIT 5000';
   if (!q) {
     const rows = db.prepare(`SELECT ${BIZ_AGG} FROM businesses b WHERE b.status = 'active'${catSql}${orderSql}`)
       .all(...(category ? [category] : []));
@@ -311,7 +311,7 @@ function searchBusinesses(q, category) {
   const like = '%' + String(q).toLowerCase() + '%';
   const sub = db.prepare(`SELECT ${BIZ_AGG} FROM businesses b WHERE b.status = 'active'${catSql}
     AND (LOWER(b.name) LIKE ? OR LOWER(b.category) LIKE ? OR LOWER(b.city) LIKE ? OR LOWER(b.country) LIKE ? OR LOWER(b.description) LIKE ?)
-    ORDER BY b.name LIMIT 50`)
+    ORDER BY b.name LIMIT 5000`)
     .all(...(category ? [category] : []).concat([like, like, like, like, like]));
   if (sub.length) return { results: sub, mode: 'substring' };
   if (terms.length) {

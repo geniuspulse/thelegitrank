@@ -279,7 +279,12 @@ async function handle(req, res) {
         newest: (a, b) => String(b.created_at || b.created_date || '').localeCompare(String(a.created_at || a.created_date || '')),
       };
       if (sorters[sort]) results.sort(sorters[sort]);
-      return html(res, 200, views.searchPage({ user, q: q_, category: cat, results, mode: srch.mode, msg: q.get('msg'), places: dbm.listPlaces(), minRating, verifiedOnly, minReviews, sort }));
+      const perPage = 12;
+      const totalResults = results.length;
+      const pages = Math.max(1, Math.ceil(totalResults / perPage));
+      const page = Math.min(pages, Math.max(1, parseInt(q.get('page'), 10) || 1));
+      const pageResults = results.slice((page - 1) * perPage, page * perPage);
+      return html(res, 200, views.searchPage({ user, q: q_, category: cat, results: pageResults, totalResults, page, pages, mode: srch.mode, msg: q.get('msg'), places: dbm.listPlaces(), minRating, verifiedOnly, minReviews, sort }));
     }
 
     let m = pathname.match(/^\/business\/([a-z0-9-]+)$/);
