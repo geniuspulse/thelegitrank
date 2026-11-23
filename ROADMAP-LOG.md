@@ -1,3 +1,4 @@
+2026-11-23 — Item 33: search results now show 12 listings per page with previous/next navigation and preserved search filters.
 
 2026-10-26 — Items 1-3 marked [skip]: need an email/SMS provider decision from the owner (recommend Africa's Talking for Malawi SMS + any SMTP relay for email).
 2026-10-26 — Item 4: verified-purchase flow — optional receipt image upload on reviews (multipart, stored privately), staff-only receipt viewer, admin 'Mark verified purchase' action, public chip on review cards.
