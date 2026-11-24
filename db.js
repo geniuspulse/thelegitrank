@@ -341,6 +341,17 @@ function topBusinesses(limit = 6) {
     SELECT ${BIZ_AGG} FROM businesses b WHERE b.status = 'active'
     ORDER BY b.verified DESC, avg_rating DESC, review_count DESC, b.created_at ASC LIMIT ?`).all(limit);
 }
+// Roadmap #34 — rank active businesses by visible reviews posted in the last 7 days.
+function trendingBusinesses(limit = 6) {
+  return db.prepare(`
+    SELECT ${BIZ_AGG}, COUNT(r.id) AS weekly_review_count
+    FROM businesses b JOIN reviews r ON r.business_id = b.id
+    WHERE b.status = 'active' AND r.hidden = 0
+      AND r.created_at >= datetime('now', '-7 days')
+    GROUP BY b.id
+    ORDER BY weekly_review_count DESC, avg_rating DESC, b.name COLLATE NOCASE ASC
+    LIMIT ?`).all(limit);
+}
 function reviewsForBusiness(bid, limit = 10, offset = 0) {
   return db.prepare(`
     SELECT r.*, u.name AS author_name,
@@ -787,7 +798,7 @@ function followAlerts(userId) {
 
 module.exports = {
   db, init, now, hashPassword, verifyPassword, slugify, uniqueSlug,
-  getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses, listPlaces, businessesInPlace,
+  getBusinessBySlug, getBusinessById, searchBusinesses, topBusinesses, trendingBusinesses, listPlaces, businessesInPlace,
   reviewsForBusiness, getReviewById, ratingDistribution, bizSentimentTags, bizKeywordCloud, myReview, userReviews,
   ownedBusinesses, reviewsNeedingOwnerResponse, platformStats, reviewerAchievements,
   audit, adminStats, recentActivity, listUsers, listReports, getReport, reportsForBusiness,

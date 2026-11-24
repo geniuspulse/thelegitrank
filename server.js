@@ -236,7 +236,7 @@ async function handle(req, res) {
   // ---------- public GET routes ----------
   if (method === 'GET') {
     if (pathname === '/') {
-      return html(res, 200, views.home({ user, stats: dbm.platformStats(), top: dbm.topBusinesses(6), msg: q.get('msg') }));
+      return html(res, 200, views.home({ user, stats: dbm.platformStats(), top: dbm.topBusinesses(6), trending: dbm.trendingBusinesses(6), msg: q.get('msg') }));
     }
 
     let categoryMatch = pathname.match(/^\/category\/([a-z0-9-]+)$/);

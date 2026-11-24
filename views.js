@@ -125,7 +125,7 @@ function flash(msg) {
 }
 
 // ---------- HOME ----------
-function home({ user, stats, top, msg }) {
+function home({ user, stats, top, trending = [], msg }) {
   const seo = {
     title: 'The Legit Rank — Real reviews of African businesses',
     desc: `Check a business before you pay. ${stats.businesses} African business${stats.businesses === 1 ? '' : 'es'}, ${stats.reviews} buyer review${stats.reviews === 1 ? '' : 's'} and ${stats.verified} verified seller${stats.verified === 1 ? '' : 's'}, with honest ratings you can trust.`,
@@ -165,6 +165,13 @@ function home({ user, stats, top, msg }) {
       <p class="center"><a class="btn btn-outline" href="/search">${t('common.search')} →</a></p>
     </div>
   </section>
+
+  ${trending.length ? `<section class="steps"><div class="wrap">
+    <span class="kicker">Popular this week</span>
+    <h2 class="sec">Trending this week</h2>
+    <p class="sec-sub">Businesses getting the most new reviews in the last 7 days.</p>
+    <div class="grid3">${trending.map(bizCard).join('')}</div>
+  </div></section>` : ''}
 
   <section class="badge-strip">
     <div class="wrap">

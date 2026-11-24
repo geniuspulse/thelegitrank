@@ -40,7 +40,7 @@ Daily build automation works top-down. Mark done with `[x]`.
 - [x] 31. Filters: rating, verified, review count, category
 - [x] 32. Sorting: most reviewed, top rated, newest
 - [x] 33. Pagination/infinite scroll on search
-- [ ] 34. "Trending this week" section
+- [x] 34. "Trending this week" section
 - [ ] 35. Compare two businesses side by side
 - [ ] 36. Map view of businesses
 - [ ] 37. Suggest-a-business (request a listing)

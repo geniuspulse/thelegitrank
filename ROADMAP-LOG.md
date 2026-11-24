@@ -1,3 +1,5 @@
+2026-11-24 — Item 34: homepage now highlights active businesses with the most visible reviews posted in the last 7 days.
+
 2026-11-23 — Item 33: search results now show 12 listings per page with previous/next navigation and preserved search filters.
 
 2026-10-26 — Items 1-3 marked [skip]: need an email/SMS provider decision from the owner (recommend Africa's Talking for Malawi SMS + any SMTP relay for email).
